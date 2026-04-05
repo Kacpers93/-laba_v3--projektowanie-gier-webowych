@@ -21,6 +21,8 @@ export class SceneRenderer {
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera, alpha: number): void {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     this.layers.forEach((layer) => layer.render(ctx, camera, alpha));
   }
 }

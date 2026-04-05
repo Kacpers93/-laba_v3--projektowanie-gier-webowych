@@ -4,7 +4,7 @@ import type { SceneLayer } from './SceneLayer';
 const GRID_SIZE = 100;
 
 export class DebugLayer implements SceneLayer {
-  readonly order = 99;
+  readonly order = 4;
   private enabled = false;
 
   public constructor() {

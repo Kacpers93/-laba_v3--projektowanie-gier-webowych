@@ -9,7 +9,7 @@ import { OffscreenCache } from '@/presentation/cache/OffscreenCache';
 import { SceneRenderer } from '@/presentation/scene/SceneRenderer';
 import { BackgroundLayer } from '@/presentation/scene/BackgroundLayer';
 import { ParallaxLayer } from '../presentation/scene/ParallaxLayer';
-import { ACTIVE_PARALLAX_DUST_PRESET } from '@/presentation/scene/ParallaxDustPresets';
+import { ACTIVE_PARALLAX_SUBLAYERS } from '@/presentation/scene/parallax-presets';
 import { WorldLayer } from '@/presentation/scene/WorldLayer';
 import { EffectsLayer } from '@/presentation/scene/EffectsLayer';
 import { DebugLayer } from '@/presentation/scene/DebugLayer';
@@ -40,25 +40,12 @@ export class AppShell {
 
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'game-layer';
-    this.canvas.style.position = 'fixed';
-    this.canvas.style.inset = '0';
-    this.canvas.style.zIndex = '0';
-    this.canvas.style.display = 'block';
-    this.canvas.style.background = '#000000';
 
     this.hudLayer = document.createElement('div');
     this.hudLayer.id = 'hud-layer';
-    this.hudLayer.style.position = 'fixed';
-    this.hudLayer.style.inset = '0';
-    this.hudLayer.style.zIndex = '1';
-    this.hudLayer.style.pointerEvents = 'none';
 
     this.screenLayer = document.createElement('div');
     this.screenLayer.id = 'screen-layer';
-    this.screenLayer.style.position = 'fixed';
-    this.screenLayer.style.inset = '0';
-    this.screenLayer.style.zIndex = '2';
-    this.screenLayer.style.pointerEvents = 'none';
 
     root.append(this.canvas, this.hudLayer, this.screenLayer);
 
@@ -87,7 +74,7 @@ export class AppShell {
       this.cache,
       this.renderer.width,
       this.renderer.height,
-      ACTIVE_PARALLAX_DUST_PRESET,
+      ACTIVE_PARALLAX_SUBLAYERS,
     );
     this.sceneRenderer.addLayer(this.parallaxLayer);
 
@@ -161,7 +148,6 @@ export class AppShell {
   };
 
   private readonly onFrameRender = (alpha: number): void => {
-    this.renderer.clear();
     this.sceneRenderer.render(this.renderer.ctx, this.camera, alpha);
   };
 
