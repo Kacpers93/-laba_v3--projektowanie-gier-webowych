@@ -7,34 +7,39 @@ Opisuje podział odpowiedzialności między warstwy i wskazuje, gdzie kończy si
 ## Struktura główna
 
 ```txt
-src/
-├── app/
-├── engine/
-├── physics/
-├── world/
-├── systems/
-├── entities/
-├── items/
-├── missions/
-├── factions/
-├── presentation/
-├── ui/
-├── types/
-└── styles/
-
-public/
-├── art/
-├── audio/
-└── fonts/
-
-docs/
-├── core/
-    ├── architecture.md
-    ├── 01_runtime-engine.md
-    ├── 02_gameplay-domeny.md
-    ├── 03_ui-dom.md
-    ├── 04_presentation-assets.md
-    └── 05_plan-prac.md
+project-root/
+├── transcendence-web/
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   ├── public/
+│   │   ├── art/
+│   │   ├── audio/
+│   │   └── fonts/
+│   └── src/
+│       ├── app/
+│       ├── engine/
+│       ├── physics/
+│       ├── world/
+│       ├── systems/
+│       ├── entities/
+│       ├── items/
+│       ├── missions/
+│       ├── factions/
+│       ├── presentation/
+│       ├── ui/
+│       ├── types/
+│       └── styles/
+└── docs/
+    └── core/
+        ├── architecture.md
+        ├── 00_vite-runtime-konfiguracja.md
+        ├── 01_runtime-engine.md
+        ├── 02_gameplay-domeny.md
+        ├── 03_ui-dom.md
+        ├── 04_presentation-assets.md
+        └── 05_plan-prac.md
 ```
 
 ## Reguły stałe

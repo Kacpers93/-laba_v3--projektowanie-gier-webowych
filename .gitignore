@@ -1,0 +1,5 @@
+/.github
+transcendence-web/node_modules
+transcendence-web/dist
+transcendence-web/.DS_Store
+.DS_Store

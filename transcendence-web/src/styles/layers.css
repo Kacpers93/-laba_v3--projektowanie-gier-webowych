@@ -1,0 +1,29 @@
+#root,
+#game-layer,
+#hud-layer,
+#screen-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  position: relative;
+  overflow: hidden;
+}
+
+#game-layer {
+  z-index: 0;
+  display: block;
+}
+
+#hud-layer {
+  z-index: 1;
+  pointer-events: none;
+}
+
+#screen-layer {
+  z-index: 2;
+  pointer-events: none;
+}

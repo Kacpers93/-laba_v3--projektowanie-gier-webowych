@@ -9,6 +9,8 @@ Ten dokument opisuje fundament aplikacji:
 - audio,
 - podstawowe kontrakty współdzielone.
 
+Szczegółowe kontrakty API Etapu 1: `06_etap1-specyfikacja.md`.
+
 ## Foldery
 - `app/` — bootstrap aplikacji, shell, składanie runtime.
 - `engine/loop/` — game loop, delta time, pause, przejścia stanów.
