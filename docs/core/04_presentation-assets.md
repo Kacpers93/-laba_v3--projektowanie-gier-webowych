@@ -9,26 +9,26 @@ Każdy ważny obiekt świata ma dwie strony:
 - wizualną w `presentation/`.
 
 ## Struktura `presentation/`
-- `scene/`
-- `renderables/`
-- `profiles/`
-- `variants/`
-- `effects/`
-- `cache/`
+- `scene/` — zaimplementowane w Etapie 2
+- `cache/` — zaimplementowane w Etapie 2
+- `renderables/` — planowane (Etap 3)
+- `profiles/` — planowane (Etap 3)
+- `variants/` — planowane (Etap 9)
+- `effects/` — planowane (Etap 9)
 
 ## Struktura `public/art/`
-- `ships/`
-- `stations/`
-- `gates/`
-- `celestial/`
-- `effects/`
-- `ui/`
-- `atlases/`
+- `ships/` (planowane)
+- `stations/` (planowane)
+- `gates/` (planowane)
+- `celestial/` (planowane)
+- `effects/` (planowane)
+- `ui/` (planowane)
+- `atlases/` (planowane)
 
 ## Struktura `public/audio/`
-- `music/`
-- `sfx/`
-- `ui/`
+- `music/` (planowane)
+- `sfx/` (planowane)
+- `ui/` (planowane)
 
 ## Reguły wizualne
 - Statki, stacje, wrota, planety i gwiazdy mają osobne profile wizualne.

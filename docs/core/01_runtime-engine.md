@@ -7,7 +7,8 @@ Ten dokument opisuje fundament aplikacji:
 - input mode,
 - renderer i kamerę,
 - audio,
-- podstawowe kontrakty współdzielone.
+- podstawowe kontrakty współdzielone,
+- integrację warstw sceny (Etap 2).
 
 Szczegółowe kontrakty API Etapu 1: `06_etap1-specyfikacja.md`.
 
@@ -19,6 +20,7 @@ Szczegółowe kontrakty API Etapu 1: `06_etap1-specyfikacja.md`.
 - `engine/audio/` — audio manager, muzyka, SFX, UI sounds.
 - `physics/` — matematyka, ruch, kolizje, spatial indexing.
 - `types/` — typy i kontrakty używane globalnie.
+- `presentation/` — orkiestracja warstw sceny, tło, paralaksa, cache offscreen.
 
 ## Minimalne moduły startowe
 - `app/AppShell.ts`

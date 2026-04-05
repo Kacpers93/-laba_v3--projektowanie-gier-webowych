@@ -4,6 +4,8 @@
 Ten dokument opisuje warstwę logiki świata i mechanik.
 Nie opisuje UI, renderu ani katalogów zasobów.
 
+Aktualny status: dokument definiuje architekturę docelową (Etapy 3+), nie stan zaimplementowany po Etapie 2.
+
 ## Domeny
 - `world/`
 - `systems/`

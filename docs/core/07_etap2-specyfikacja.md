@@ -31,9 +31,9 @@ Wszystko rysowane jest na jednym canvasie (`#game-layer`). Warstwy renderu to lo
 |---|---|---|---|---|
 | 1 | `BackgroundLayer` | `scene/BackgroundLayer.ts` | Statyczne gwiazdy — siatka losowych punktów, bez ruchu. Rysowane raz do cache, potem blit. | Nie — ekranowe współrzędne, stały skybox. |
 | 2 | `ParallaxLayer` | `scene/ParallaxLayer.ts` | 1–3 warstwy paralaksy (mgławice, pył). Każda przesuwa się z innym współczynnikiem względem kamery. | Tak — przesunięcie = `camera.position * factor`. |
-| 3 | `WorldLayer` | `scene/WorldLayer.ts` | Obiekty świata (statki, stacje, wrota, asteroidy). Stub w Etapie 2 — rysuje placeholder. | Tak — pełna transformacja kamery. |
+| 3 | `WorldLayer` | `scene/WorldLayer.ts` | Obiekty świata (statki, stacje, wrota, asteroidy). Stub w Etapie 2 — bez rysowania. | Tak — docelowo pełna transformacja kamery. |
 | 4 | `EffectsLayer` | `scene/EffectsLayer.ts` | Cząstki, eksplozje, ślady silników. Stub w Etapie 2 — pusty. | Tak. |
-| 5 | `DebugLayer` | `scene/DebugLayer.ts` | Siatka, wyznaczniki kamery, AABB kolizji. Włączane flagą `debug`. | Tak. |
+| 5 | `DebugLayer` | `scene/DebugLayer.ts` | Siatka i znacznik centrum kamery. Przełączana klawiszem `G`. | Tak. |
 
 ### Kontrakt `SceneLayer`
 
@@ -82,8 +82,7 @@ export class SceneRenderer {
 
 ```
 onFrameUpdate  → sceneRenderer.update(dt, camera)
-onFrameRender  → renderer.clear()
-               → sceneRenderer.render(renderer.ctx, camera, alpha)
+onFrameRender  → sceneRenderer.render(renderer.ctx, camera, alpha)
 ```
 
 ---
@@ -155,10 +154,11 @@ export class ParallaxLayer implements SceneLayer {
 
 interface ParallaxSublayerConfig {
   depthFactor: number;         // 0–1 (jak bardzo reaguje na kamerę)
-  texture: OffscreenCanvas;    // prerenderowana tekstura
   tileX: boolean;              // czy tilować horyzontalnie
   tileY: boolean;              // czy tilować wertykalnie
   opacity: number;             // 0–1
+  color: string;               // bazowy kolor proceduralnej tekstury
+  noiseIntensity: number;      // intensywność proceduralnego szumu
 }
 ```
 
@@ -293,7 +293,7 @@ Po uruchomieniu `npm run dev` i otwarciu `http://localhost:5173`:
 
 1. **Tło z gwiazdami** — zamiast czarnego canvasu, widać losowo rozmieszczone gwiazdy (jasne punkty różnej wielkości na czarnym tle). Gwiazdy nie reagują na ruch kamery.
 2. **Paralaksa** — poruszanie kamerą (strzałki w trybie `game`) powoduje widoczne przesunięcie 2–3 warstw mgławic/pyłu z różną prędkością. Bliższe warstwy reagują silniej na ruch kamery. Parallax jest proceduralny (losowe plamy kolorowe) — nie wymaga assetów.
-3. **Debug grid** — po wciśnięciu klawisza (np. `F3` lub `G`) pojawia/znika siatka współrzędnych świata. Siatka przesuwa się z kamerą.
+3. **Debug grid** — po wciśnięciu klawisza `G` pojawia/znika siatka współrzędnych świata. Siatka przesuwa się z kamerą.
 4. **Resize działa** — zmiana rozmiaru okna przeglądarki poprawnie skaluje canvas, regeneruje cache tła, paralaksa dostosowuje się bez artefaktów.
 5. **Warstwy widoczne w kodzie** — `SceneRenderer` zarządza warstwami, warstwy są zarejestrowane w poprawnej kolejności.
 6. **Cache działa** — tło i paralaksa korzystają z `OffscreenCache`. W DevTools nie widać ponownego generowania co klatkę (brak spadku FPS).

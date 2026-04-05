@@ -21,7 +21,6 @@ Po wdrożeniu tych ustaleń istniejące dokumenty `00`–`05` + `architecture` p
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Transcendence</title>
-  <link rel="stylesheet" href="/src/styles/reset.css" />
 </head>
 <body>
   <div id="root"></div>
@@ -77,7 +76,7 @@ Rola:       Korzeń runtime — tworzy warstwy, łączy systemy, uruchamia loop.
 | Metoda / Pole | Opis |
 |---|---|
 | `constructor(root: HTMLElement)` | Tworzy `#game-layer`, `#hud-layer`, `#screen-layer` w podanym kontenerze. |
-| `start(): void` | Inicjalizuje Renderer, Camera, AudioManager, InputModeManager, GameLoop. Woła `gameLoop.start()`. |
+| `start(): void` | Ustawia focus na canvas i uruchamia `gameLoop.start()`. Inicjalizacja systemów zachodzi w konstruktorze. |
 | `stop(): void` | Zatrzymuje GameLoop, czyści listenery. |
 | `readonly canvas: HTMLCanvasElement` | Referencja do canvasu (`#game-layer`). |
 | `readonly renderer: Renderer` | Instancja renderera. |
@@ -360,6 +359,7 @@ export interface CollisionResult {
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -367,16 +367,16 @@ export interface CollisionResult {
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": ".",
+    "types": ["node"],
     "paths": {
-      "@/*": ["src/*"],
-      "@engine/*": ["src/engine/*"],
-      "@physics/*": ["src/physics/*"],
-      "@world/*": ["src/world/*"],
-      "@types/*": ["src/types/*"]
+      "@/*": ["./src/*"],
+      "@engine/*": ["./src/engine/*"],
+      "@physics/*": ["./src/physics/*"],
+      "@world/*": ["./src/world/*"],
+      "@types/*": ["./src/types/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
 ```
@@ -427,7 +427,7 @@ Uwaga: usunięto `@vitejs/plugin-typescript` z pluginów — Vite obsługuje Typ
 
 Po uruchomieniu `npm run dev` i otwarciu `http://localhost:5173`:
 
-1. **Czarny canvas na pełnym ekranie** — `#game-layer` jest widoczny, wypełnia viewport, reaguje na resize okna.
+1. **Canvas na pełnym ekranie** — `#game-layer` jest widoczny, wypełnia viewport, reaguje na resize okna.
 2. **Pętla gry bije** — w DevTools console widać log (do usunięcia po weryfikacji): `[GameLoop] tick #N` co ~33ms, plus `[GameLoop] frame` co ~16ms.
 3. **Input mode działa** — domyślny tryb `'game'`. Wciśnięcie `Escape` przełącza na `'ui'` (log w konsoli: `[InputMode] → ui`). Ponowne `Escape` wraca na `'game'`.
 4. **Kamera istnieje** — Camera ma pozycję (0,0) i zoom 1.0. Strzałki klawiatury (w trybie `game`) przesuwają pozycję kamery (widoczne w logach).
@@ -460,6 +460,8 @@ Po uruchomieniu `npm run dev` i otwarciu `http://localhost:5173`:
 - Żadnych assetów graficznych ani dźwiękowych.
 - Żadnych bytów świata.
 - Żadnej logiki gameplayowej.
+
+Uwaga: po wdrożeniu Etapu 2 wizualnie zamiast czystego czarnego tła pojawiają się warstwy `BackgroundLayer` i `ParallaxLayer`.
 
 ---
 

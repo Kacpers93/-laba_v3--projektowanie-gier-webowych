@@ -3,6 +3,11 @@
 ## Zasada
 Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 
+## Status implementacyjny
+- Etap 1: wdrożony.
+- Etap 2: wdrożony.
+- Etapy 3-9: planowane.
+
 ## Etap 1
 `app/`, `engine/`, `physics/`, `types/`
 - runtime,

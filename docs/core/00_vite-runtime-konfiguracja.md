@@ -9,7 +9,7 @@ Struktura repozytorium i podział katalogów opisany jest w dokumentach [archite
 
 | Plik | Odpowiedzialność |
 |------|-----------------|
-| `index.html` | HTML entry point — osadza canvas, root dla overlay UI, ładuje `src/main.ts` |
+| `index.html` | HTML entry point — osadza `#root` i ładuje `src/main.ts` |
 | `package.json` | Zależności, skrypty dev/build/preview, poddelegowanie do Vite |
 | `tsconfig.json` | Opcje kompilatora TypeScript (ścieżki, target, moduły) |
 | `vite.config.ts` | Konfiguracja dev servera, bundle builder, aliasy, pluginy |
@@ -21,7 +21,7 @@ Proces inicjalizacji:
 ```
 1. Przeglądarka ładuje index.html
    ↓
-2. index.html osadza <div id="root"></div> dla UI (lub <canvas> bezpośrednio)
+2. index.html osadza <div id="root"></div>
    ↓
 3. index.html script type="module" → src/main.ts
    ↓
@@ -59,7 +59,6 @@ Proces inicjalizacji:
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Transcendence</title>
-  <link rel="stylesheet" href="/src/styles/reset.css" />
 </head>
 <body>
   <div id="root"></div>
@@ -128,13 +127,16 @@ import spriteFile from '/public/art/sprites/ship.png'
 
 ```typescript
 // ✅ Prawidłowo
-import { GameEngine } from '@engine/Engine'
-import { Vector2 } from '@physics/Vector2'
-import '@/styles/global.css'
+import '@/styles/reset.css'
+import '@/styles/layers.css'
+import { bootstrap } from './app/Bootstrap.ts'
+void bootstrap()
 
 // ❌ Źle
 import { GameEngine } from '../../src/engine/Engine'
 ```
+
+W obecnej implementacji style są ładowane przez importy w `src/main.ts`, a `index.html` pozostaje minimalny.
 
 ## Tryby działania
 

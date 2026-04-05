@@ -51,6 +51,9 @@ project-root/
 - `styles/` przechowuje wspólne style globalne, a style specyficzne dla ekranów mogą siedzieć przy modułach UI.
 - `public/art/` i `public/audio/` przechowują surowe zasoby oraz atlasy wynikowe.
 
+## Uwaga o etapach
+- Katalogi `world/`, `systems/`, `entities/`, `items/`, `missions/`, `factions/`, `ui/` są częścią struktury docelowej, ale nie są wymagane na etapie zamknięcia Etapu 1 i 2.
+
 ## Reguły wykonawcze
 - Żaden ważny obiekt świata nie istnieje tylko jako dane bez reprezentacji wizualnej.
 - Żadna logika gameplayowa nie siedzi w `presentation/`.
