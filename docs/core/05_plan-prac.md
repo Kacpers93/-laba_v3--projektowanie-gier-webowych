@@ -23,7 +23,7 @@ Kryteria zamknięcia Etapu 1: `06_etap1-specyfikacja.md`, sekcja 6.
 - cache,
 - porządek rysowania.
 
-Kryteria zamknięcia Etapu 2: [07_etap2-specyfikacja.md](07_etap2-specyfikacja.md), sekcja 5.
+Kryteria zamknięcia Etapu 2: `07_etap2-specyfikacja.md`, sekcja 5.
 
 ## Etap 3
 `entities/base/`, `presentation/renderables/`, `presentation/profiles/`

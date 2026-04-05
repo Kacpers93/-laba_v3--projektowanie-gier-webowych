@@ -1,148 +1,175 @@
 import type { Camera } from '@engine/renderer/Camera';
+import type { OffscreenCache } from '../cache/OffscreenCache';
 import type { SceneLayer } from './SceneLayer';
-import { OffscreenCache } from '../cache/OffscreenCache';
 
-type ParallaxSublayerConfig = {
+export interface ParallaxSublayerConfig {
   depthFactor: number;
   tileX: boolean;
   tileY: boolean;
   opacity: number;
   color: string;
-  seed?: number;
-  textureWidth?: number;
-  textureHeight?: number;
-};
+  noiseIntensity: number;
+}
 
-type InternalSublayer = ParallaxSublayerConfig & {
-  texture: OffscreenCanvas;
+interface Sublayer {
+  config: ParallaxSublayerConfig;
+  cacheKey: string;
   offsetX: number;
   offsetY: number;
-};
+}
 
 export class ParallaxLayer implements SceneLayer {
-  public readonly order = 1;
-
-  private readonly sublayers: InternalSublayer[];
-  private width = 1;
-  private height = 1;
+  readonly order = 1;
+  private sublayers: Sublayer[] = [];
 
   public constructor(
-    private readonly cache: OffscreenCache,
-    sublayers: ParallaxSublayerConfig[],
+    private cache: OffscreenCache,
+    private width: number,
+    private height: number,
+    configs: ParallaxSublayerConfig[],
   ) {
-    this.sublayers = sublayers.map((sublayer, index) => {
-      const textureWidth = sublayer.textureWidth ?? 640;
-      const textureHeight = sublayer.textureHeight ?? 360;
-      const textureKey = `parallax-${index}`;
-      const texture = this.cache.getOrCreate(textureKey, textureWidth, textureHeight, (ctx) => {
-        this.renderTexture(ctx, textureWidth, textureHeight, sublayer.color, sublayer.seed ?? index + 1);
-      });
-
-      return {
-        ...sublayer,
-        texture,
+    configs.forEach((cfg, idx) => {
+      this.sublayers.push({
+        config: cfg,
+        cacheKey: `parallax-${idx}`,
         offsetX: 0,
         offsetY: 0,
-      };
+      });
     });
   }
 
   public update(_dt: number, camera: Camera): void {
-    for (const sublayer of this.sublayers) {
-      sublayer.offsetX = camera.position.x * sublayer.depthFactor;
-      sublayer.offsetY = camera.position.y * sublayer.depthFactor;
-    }
+    this.sublayers.forEach((sublayer) => {
+      sublayer.offsetX = camera.position.x * sublayer.config.depthFactor;
+      sublayer.offsetY = camera.position.y * sublayer.config.depthFactor;
+    });
   }
 
-  public render(ctx: CanvasRenderingContext2D, camera: Camera, _alpha: number): void {
-    for (const sublayer of this.sublayers) {
-      this.renderSublayer(ctx, camera, sublayer);
-    }
+  public render(ctx: CanvasRenderingContext2D, _camera: Camera, _alpha: number): void {
+    this.sublayers.forEach((sublayer) => {
+      const canvas = this.cache.getOrCreate(
+        sublayer.cacheKey,
+        this.width,
+        this.height,
+        (offscreenCtx) => {
+          this.renderSublayerToCanvas(offscreenCtx, sublayer.config, this.width, this.height);
+        },
+      );
+
+      const textureWidth = canvas.width;
+      const textureHeight = canvas.height;
+      const startX = sublayer.config.tileX
+        ? -this.wrapOffset(sublayer.offsetX, textureWidth)
+        : -sublayer.offsetX;
+      const startY = sublayer.config.tileY
+        ? -this.wrapOffset(sublayer.offsetY, textureHeight)
+        : -sublayer.offsetY;
+      const repeatX = sublayer.config.tileX ? Math.ceil(this.width / textureWidth) + 1 : 1;
+      const repeatY = sublayer.config.tileY ? Math.ceil(this.height / textureHeight) + 1 : 1;
+
+      ctx.save();
+      ctx.globalAlpha = sublayer.config.opacity;
+
+      for (let x = 0; x < repeatX; x++) {
+        for (let y = 0; y < repeatY; y++) {
+          ctx.drawImage(canvas, startX + x * textureWidth, startY + y * textureHeight);
+        }
+      }
+
+      ctx.restore();
+    });
   }
 
   public regenerate(width: number, height: number): void {
-    this.width = Math.max(1, Math.floor(width));
-    this.height = Math.max(1, Math.floor(height));
+    this.width = width;
+    this.height = height;
+    this.sublayers.forEach((s) => this.cache.invalidate(s.cacheKey));
   }
 
-  private renderSublayer(
-    ctx: CanvasRenderingContext2D,
-    camera: Camera,
-    sublayer: InternalSublayer,
-  ): void {
-    ctx.save();
-    ctx.globalAlpha = sublayer.opacity;
-
-    const offsetX = -(sublayer.offsetX % sublayer.texture.width);
-    const offsetY = -(sublayer.offsetY % sublayer.texture.height);
-    const tileWidth = sublayer.texture.width;
-    const tileHeight = sublayer.texture.height;
-
-    const startX = sublayer.tileX ? offsetX - tileWidth : offsetX;
-    const endX = sublayer.tileX ? this.width + tileWidth : this.width;
-    const startY = sublayer.tileY ? offsetY - tileHeight : offsetY;
-    const endY = sublayer.tileY ? this.height + tileHeight : this.height;
-
-    for (let x = startX; x < endX; x += tileWidth) {
-      for (let y = startY; y < endY; y += tileHeight) {
-        ctx.drawImage(sublayer.texture, x, y);
-      }
-      if (!sublayer.tileY) {
-        break;
-      }
-    }
-
-    if (!sublayer.tileX && !sublayer.tileY) {
-      ctx.drawImage(sublayer.texture, offsetX, offsetY);
-    }
-
-    ctx.restore();
-  }
-
-  private renderTexture(
+  private renderSublayerToCanvas(
     ctx: OffscreenCanvasRenderingContext2D,
+    config: ParallaxSublayerConfig,
     width: number,
     height: number,
-    color: string,
-    seed: number,
   ): void {
-    const random = this.createRandom(seed + width * 13 + height * 7);
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
 
-    for (let index = 0; index < 24; index += 1) {
-      const x = random() * width;
-      const y = random() * height;
-      const radius = 80 + random() * 180;
-      const alpha = 0.05 + random() * 0.08;
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      gradient.addColorStop(0, this.withAlpha(color, alpha));
-      gradient.addColorStop(1, this.withAlpha(color, 0));
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
+    const dustCount = Math.floor((width * height) / 900 * (0.8 + config.noiseIntensity));
+    for (let i = 0; i < dustCount; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const size = Math.random() * 3.4 + 0.9;
+      const alpha = Math.min(0.85, (Math.random() * 0.28 + 0.12) * config.noiseIntensity);
+
+      ctx.fillStyle = this.withAlpha(config.color, alpha);
+
+      for (const offsetX of [-width, 0, width]) {
+        for (const offsetY of [-height, 0, height]) {
+          const px = x + offsetX;
+          const py = y + offsetY;
+          if (px + size < 0 || px - size > width || py + size < 0 || py - size > height) {
+            continue;
+          }
+
+          ctx.beginPath();
+          ctx.arc(px, py, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
+
+    const wispCount = Math.floor((width * height) / 120000 * (0.6 + config.noiseIntensity));
+    for (let i = 0; i < wispCount; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const radiusX = Math.random() * 20 + 10;
+      const radiusY = Math.random() * 8 + 4;
+      const rotation = Math.random() * Math.PI;
+      const alpha = Math.min(0.45, (Math.random() * 0.16 + 0.06) * config.noiseIntensity);
+
+      ctx.fillStyle = this.withAlpha(config.color, alpha);
+
+      for (const offsetX of [-width, 0, width]) {
+        for (const offsetY of [-height, 0, height]) {
+          const px = x + offsetX;
+          const py = y + offsetY;
+          if (
+            px + radiusX < 0 ||
+            px - radiusX > width ||
+            py + radiusX < 0 ||
+            py - radiusX > height
+          ) {
+            continue;
+          }
+
+          ctx.beginPath();
+          ctx.ellipse(px, py, radiusX, radiusY, rotation, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
   }
 
-  private createRandom(seed: number): () => number {
-    let state = seed >>> 0;
-    return () => {
-      state = (1103515245 * state + 12345) >>> 0;
-      return state / 0xffffffff;
-    };
+  private wrapOffset(offset: number, size: number): number {
+    if (size <= 0) {
+      return 0;
+    }
+
+    return ((offset % size) + size) % size;
   }
 
   private withAlpha(color: string, alpha: number): string {
-    if (color.startsWith('rgba(')) {
-      return color.replace(/rgba\(([^)]+),\s*[\d.]+\)/, `rgba($1, ${alpha})`);
+    const match = color.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/i);
+
+    if (!match) {
+      return color;
     }
 
-    if (color.startsWith('rgb(')) {
-      return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
-    }
+    const red = Number(match[1]);
+    const green = Number(match[2]);
+    const blue = Number(match[3]);
 
-    return color;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
   }
 }

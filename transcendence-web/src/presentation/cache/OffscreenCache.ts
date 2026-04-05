@@ -1,23 +1,8 @@
-type CacheEntry = {
-  canvas: OffscreenCanvas;
-  width: number;
-  height: number;
-};
-
 export class OffscreenCache {
-  private readonly entries = new Map<string, CacheEntry>();
-
-  public get size(): number {
-    return this.entries.size;
-  }
-
-  public get estimatedBytes(): number {
-    let total = 0;
-    for (const entry of this.entries.values()) {
-      total += entry.width * entry.height * 4;
-    }
-    return total;
-  }
+  private readonly cache = new Map<
+    string,
+    { canvas: OffscreenCanvas; width: number; height: number }
+  >();
 
   public getOrCreate(
     key: string,
@@ -25,27 +10,40 @@ export class OffscreenCache {
     height: number,
     renderFn: (ctx: OffscreenCanvasRenderingContext2D) => void,
   ): OffscreenCanvas {
-    const existing = this.entries.get(key);
-    if (existing && existing.width === width && existing.height === height) {
-      return existing.canvas;
+    const entry = this.cache.get(key);
+
+    if (entry && entry.width === width && entry.height === height) {
+      return entry.canvas;
     }
 
-    const canvas = new OffscreenCanvas(width, height);
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error(`Unable to create offscreen canvas context for ${key}`);
+    const offscreenCanvas = new OffscreenCanvas(width, height);
+    const ctx = offscreenCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not get 2D context from OffscreenCanvas');
     }
 
-    renderFn(context);
-    this.entries.set(key, { canvas, width, height });
-    return canvas;
+    renderFn(ctx);
+    this.cache.set(key, { canvas: offscreenCanvas, width, height });
+    return offscreenCanvas;
   }
 
   public invalidate(key: string): void {
-    this.entries.delete(key);
+    this.cache.delete(key);
   }
 
   public clear(): void {
-    this.entries.clear();
+    this.cache.clear();
+  }
+
+  public get size(): number {
+    return this.cache.size;
+  }
+
+  public get estimatedBytes(): number {
+    let total = 0;
+    this.cache.forEach((entry) => {
+      total += entry.width * entry.height * 4;
+    });
+    return total;
   }
 }

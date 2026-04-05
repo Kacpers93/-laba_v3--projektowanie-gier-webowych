@@ -2,13 +2,13 @@ import type { Camera } from '@engine/renderer/Camera';
 import type { SceneLayer } from './SceneLayer';
 
 export class EffectsLayer implements SceneLayer {
-  public readonly order = 3;
+  readonly order = 3;
 
   public update(_dt: number, _camera: Camera): void {
-    // Etap 2: stub.
+    // Stub — brak efektów cząsteczkowych w Etapie 2
   }
 
   public render(_ctx: CanvasRenderingContext2D, _camera: Camera, _alpha: number): void {
-    // Etap 2: stub.
+    // Stub — EffectsLayer będzie rysować cząstki i eksplozje w Etapie 9
   }
 }

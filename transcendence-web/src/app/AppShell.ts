@@ -5,13 +5,14 @@ import { UIInput } from '@engine/input/UIInput';
 import { GameLoop } from '@engine/loop/GameLoop';
 import { Camera } from '@engine/renderer/Camera';
 import { Renderer } from '@engine/renderer/Renderer';
-import { OffscreenCache } from '../presentation/cache/OffscreenCache';
-import { BackgroundLayer } from '../presentation/scene/BackgroundLayer';
-import { DebugLayer } from '../presentation/scene/DebugLayer';
-import { EffectsLayer } from '../presentation/scene/EffectsLayer';
+import { OffscreenCache } from '@/presentation/cache/OffscreenCache';
+import { SceneRenderer } from '@/presentation/scene/SceneRenderer';
+import { BackgroundLayer } from '@/presentation/scene/BackgroundLayer';
 import { ParallaxLayer } from '../presentation/scene/ParallaxLayer';
-import { SceneRenderer } from '../presentation/scene/SceneRenderer';
-import { WorldLayer } from '../presentation/scene/WorldLayer';
+import { ACTIVE_PARALLAX_DUST_PRESET } from '@/presentation/scene/ParallaxDustPresets';
+import { WorldLayer } from '@/presentation/scene/WorldLayer';
+import { EffectsLayer } from '@/presentation/scene/EffectsLayer';
+import { DebugLayer } from '@/presentation/scene/DebugLayer';
 
 const CAMERA_SPEED = 220;
 
@@ -21,19 +22,16 @@ export class AppShell {
   public readonly gameLoop: GameLoop;
   public readonly audioManager: AudioManager;
   public readonly inputModeManager: InputModeManager;
+  public readonly sceneRenderer: SceneRenderer;
+  private readonly cache: OffscreenCache;
+  private readonly backgroundLayer: BackgroundLayer;
+  private readonly parallaxLayer: ParallaxLayer;
 
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
   private readonly camera: Camera;
   private readonly gameInput: GameInput;
   private readonly uiInput: UIInput;
-  private readonly sceneRenderer: SceneRenderer;
-  private readonly cache: OffscreenCache;
-  private readonly backgroundLayer: BackgroundLayer;
-  private readonly parallaxLayer: ParallaxLayer;
-  private readonly worldLayer: WorldLayer;
-  private readonly effectsLayer: EffectsLayer;
-  private readonly debugLayer: DebugLayer;
 
   private started = false;
 
@@ -42,12 +40,25 @@ export class AppShell {
 
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'game-layer';
+    this.canvas.style.position = 'fixed';
+    this.canvas.style.inset = '0';
+    this.canvas.style.zIndex = '0';
+    this.canvas.style.display = 'block';
+    this.canvas.style.background = '#000000';
 
     this.hudLayer = document.createElement('div');
     this.hudLayer.id = 'hud-layer';
+    this.hudLayer.style.position = 'fixed';
+    this.hudLayer.style.inset = '0';
+    this.hudLayer.style.zIndex = '1';
+    this.hudLayer.style.pointerEvents = 'none';
 
     this.screenLayer = document.createElement('div');
     this.screenLayer.id = 'screen-layer';
+    this.screenLayer.style.position = 'fixed';
+    this.screenLayer.style.inset = '0';
+    this.screenLayer.style.zIndex = '2';
+    this.screenLayer.style.pointerEvents = 'none';
 
     root.append(this.canvas, this.hudLayer, this.screenLayer);
 
@@ -57,43 +68,32 @@ export class AppShell {
     this.inputModeManager = new InputModeManager();
     this.gameInput = new GameInput(this.canvas, this.inputModeManager);
     this.uiInput = new UIInput(this.inputModeManager);
-    this.cache = new OffscreenCache();
-    this.sceneRenderer = new SceneRenderer();
-    this.backgroundLayer = new BackgroundLayer(this.cache);
-    this.parallaxLayer = new ParallaxLayer(this.cache, [
-      {
-        depthFactor: 0.05,
-        tileX: true,
-        tileY: true,
-        opacity: 0.35,
-        color: 'rgb(86, 116, 255)',
-      },
-      {
-        depthFactor: 0.15,
-        tileX: true,
-        tileY: true,
-        opacity: 0.28,
-        color: 'rgb(120, 78, 255)',
-      },
-      {
-        depthFactor: 0.3,
-        tileX: true,
-        tileY: true,
-        opacity: 0.22,
-        color: 'rgb(46, 180, 255)',
-      },
-    ]);
-    this.worldLayer = new WorldLayer();
-    this.effectsLayer = new EffectsLayer();
-    this.debugLayer = new DebugLayer();
 
     this.gameInput.setCamera(this.camera);
 
+    this.cache = new OffscreenCache();
+    this.sceneRenderer = new SceneRenderer();
+
+    this.backgroundLayer = new BackgroundLayer(this.cache, this.renderer.width, this.renderer.height, {
+      starCount: 400,
+      minBrightness: 0.3,
+      maxBrightness: 1.0,
+      minSize: 0.5,
+      maxSize: 2.0,
+    });
     this.sceneRenderer.addLayer(this.backgroundLayer);
+
+    this.parallaxLayer = new ParallaxLayer(
+      this.cache,
+      this.renderer.width,
+      this.renderer.height,
+      ACTIVE_PARALLAX_DUST_PRESET,
+    );
     this.sceneRenderer.addLayer(this.parallaxLayer);
-    this.sceneRenderer.addLayer(this.worldLayer);
-    this.sceneRenderer.addLayer(this.effectsLayer);
-    this.sceneRenderer.addLayer(this.debugLayer);
+
+    this.sceneRenderer.addLayer(new WorldLayer());
+    this.sceneRenderer.addLayer(new EffectsLayer());
+    this.sceneRenderer.addLayer(new DebugLayer());
 
     this.gameLoop = new GameLoop({
       tickRate: 30,
@@ -105,10 +105,8 @@ export class AppShell {
     this.bindInputModeLogs();
     this.bindInputActions();
     this.bindAudioInit();
-    this.bindDebugToggle();
 
     window.addEventListener('resize', this.handleResize);
-    this.handleResize();
   }
 
   public start(): void {
@@ -130,7 +128,6 @@ export class AppShell {
     this.gameLoop.stop();
     this.gameInput.destroy();
     this.uiInput.destroy();
-    window.removeEventListener('keydown', this.handleDebugKeyDown);
     window.removeEventListener('resize', this.handleResize);
   }
 
@@ -163,9 +160,9 @@ export class AppShell {
     this.sceneRenderer.update(_dt, this.camera);
   };
 
-  private readonly onFrameRender = (_alpha: number): void => {
+  private readonly onFrameRender = (alpha: number): void => {
     this.renderer.clear();
-    this.sceneRenderer.render(this.renderer.ctx, this.camera, _alpha);
+    this.sceneRenderer.render(this.renderer.ctx, this.camera, alpha);
   };
 
   private readonly handleResize = (): void => {
@@ -202,17 +199,6 @@ export class AppShell {
       { once: true },
     );
   }
-
-  private bindDebugToggle(): void {
-    window.addEventListener('keydown', this.handleDebugKeyDown);
-  }
-
-  private readonly handleDebugKeyDown = (event: KeyboardEvent): void => {
-    if (event.key.toLowerCase() === 'f3') {
-      event.preventDefault();
-      this.debugLayer.enabled = !this.debugLayer.enabled;
-    }
-  };
 
   private getAudioState(): string {
     return 'running';

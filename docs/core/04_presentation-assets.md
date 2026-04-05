@@ -41,4 +41,4 @@ Każdy ważny obiekt świata ma dwie strony:
 - Nie mieszamy efektów wizualnych z logiką systemów gameplayowych.
 - Nie używamy przypadkowych luźnych assetów bez kategorii i atlasów.
 
-Kontrakty scene i cache Etapu 2: [07_etap2-specyfikacja.md](07_etap2-specyfikacja.md).
+Kontrakty scene i cache Etapu 2: `07_etap2-specyfikacja.md`.

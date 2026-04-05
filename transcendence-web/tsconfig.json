@@ -10,16 +10,14 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "ignoreDeprecations": "6.0",
     "noEmit": true,
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@engine/*": ["src/engine/*"],
-      "@physics/*": ["src/physics/*"],
-      "@world/*": ["src/world/*"],
-      "@types/*": ["src/types/*"]
+      "@/*": ["./src/*"],
+      "@engine/*": ["./src/engine/*"],
+      "@physics/*": ["./src/physics/*"],
+      "@world/*": ["./src/world/*"],
+      "@types/*": ["./src/types/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "vite.config.ts"],

@@ -78,7 +78,7 @@ export class SceneRenderer {
 
 ### Integracja z AppShell
 
-`AppShell.start()` tworzy `SceneRenderer`, dodaje warstwy, wpina go w callbacki GameLoop:
+`AppShell` tworzy `SceneRenderer` i rejestruje warstwy w konstruktorze, a `start()` uruchamia pętlę. Callbacki `GameLoop` są spięte z rendererem sceny:
 
 ```
 onFrameUpdate  → sceneRenderer.update(dt, camera)
@@ -210,7 +210,7 @@ export class OffscreenCache {
 
 | Sytuacja | Akcja |
 |---|---|
-| Resize okna | `invalidate('background')`, bo rozmiar canvasu się zmienił. |
+| Resize okna | `backgroundLayer.regenerate(width, height)` i `parallaxLayer.regenerate(width, height)` (wewnętrznie `invalidate` odpowiednich kluczy). |
 | Zmiana systemu gwiezdnego | `clear()` — inne tło, inne mgławice, inny seed. |
 | Zmiana zoomu kamery | Paralaksa **nie** jest inwalidowana — przesuwa się offset, nie treść. Background też nie — jest ekranowy. |
 | Co klatkę | Nic — cache jest stabilny dopóki nie nastąpi jedno z powyższych. |
@@ -322,7 +322,7 @@ Po uruchomieniu `npm run dev` i otwarciu `http://localhost:5173`:
 - Żadnych efektów cząsteczkowych — EffectsLayer jest stubem.
 - Żadnych assetów graficznych (PNG, sprite sheety) — paralaksa jest proceduralna.
 - Żadnego HUD, menu, UI.
-- Żadnych zmian w `app/`, `engine/`, `physics/`, `types/` (nie ruszamy Etapu 1).
+- Brak zmian w `engine/`, `physics/`, `types/`. Integracja warstw sceny i obsługa resize w `app/AppShell.ts` wchodzi w zakres Etapu 2.
 
 ---
 
