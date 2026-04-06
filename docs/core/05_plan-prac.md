@@ -43,7 +43,7 @@ Kryteria zamknięcia Etapu 3: `08_etap3-specyfikacja.md`, sekcja 11.
 - Dev Overlay Panel (zwijany panel debug po prawej stronie z metrykami runtime),
 - rozszerzalny system sekcji i metryk (`registerSection`, `registerMetric`),
 - toggle test bytu (checkbox + `localStorage` zamiast hardkodowanej stałej),
-- skrót klawiaturowy F3 do pokazywania/ukrywania panelu,
+- skrót klawiaturowy 6 do pokazywania/ukrywania panelu,
 - refaktor `OffscreenCache.ts` na fasadę + `EntityCacheBudget` + `EntityLruIndex` + `cacheTypes`,
 - publiczne gettery metryk render w `WorldLayer` (`renderableCount`, `lastVisibleCount`, `lastCulledCount`).
 

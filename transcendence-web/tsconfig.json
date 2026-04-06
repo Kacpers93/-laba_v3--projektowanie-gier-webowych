@@ -11,9 +11,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
+      "@dev/*": ["./src/dev/*"],
       "@engine/*": ["./src/engine/*"],
       "@entities/*": ["./src/entities/*"],
       "@physics/*": ["./src/physics/*"],

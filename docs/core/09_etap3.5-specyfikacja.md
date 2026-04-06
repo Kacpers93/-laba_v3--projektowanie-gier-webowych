@@ -241,7 +241,7 @@ Flaga test bytu:
 
 ### Decyzja architekturalna
 
-Panel jest klasą zarządzającą DOM-em i odświeżaną z throttle 4 Hz (co 250 ms). Sekcje rejestruje się programowo przez API — nowe etapy dodają sekcje bez modyfikacji kodu panelu.
+Panel jest klasą zarządzającą DOM-em. Sekcje rejestruje się programowo przez API — nowe etapy dodają sekcje bez modyfikacji kodu panelu. Częstotliwość odświeżania jest sterowana przez AppShell z throttle 4 Hz (co 250 ms).
 
 ### `DevOverlayPanel`
 
@@ -250,7 +250,7 @@ Panel jest klasą zarządzającą DOM-em i odświeżaną z throttle 4 Hz (co 250
 
 /**
  * Dev Overlay Panel — panel debug z metrykami runtime.
- * Rejestr sekcji i metryk, odświeżany z throttle 4 Hz (co 250 ms).
+ * Rejestr sekcji i metryk. Częstotliwość odświeżania sterowana przez AppShell (throttle 4 Hz, co 250 ms).
  */
 export class DevOverlayPanel {
   private readonly root: HTMLDivElement;
@@ -288,7 +288,7 @@ export class DevOverlayPanel {
   /** Pobiera sekcję po id. */
   getSection(id: string): DevSection | undefined;
 
-  /** Aktualizuje wszystkie sekcje — wywoływane z throttle 4 Hz (co 250 ms). */
+  /** Aktualizuje wszystkie sekcje — wywoływane przez AppShell (throttle 4 Hz). */
   update(): void;
 }
 ```
@@ -337,7 +337,7 @@ export class DevSection {
     onChange: (value: boolean) => void,
   ): void;
 
-  /** Aktualizuje widżety sekcji — wywoływane przez panel z throttle 4 Hz (co 250 ms). */
+  /** Aktualizuje widżety sekcji — wywoływane przez panel (częstotliwość kontrolowana przez AppShell). */
   update(): void;
 
   /** Przełącza zwinięcie sekcji. */
@@ -413,12 +413,12 @@ export interface DevControl {
 
 | Metryka | Getter | Format |
 |---|---|---|
-| `used` | `cache.entityCacheBytes / (1024*1024)` | `N.N MB` |
+| `used` | `cache.entityCacheBytes / (1024*1024)` | `N.N MB` (dla bardzo małych wartości: `N.N KB`) |
 | `limit` | `cache.entityCacheLimit / (1024*1024)` | `N MB` |
 | `percent` | `(entityCacheBytes / entityCacheLimit) * 100` | `N.N%` |
 | `entries` | `cache.size` | liczba |
 
-> **Wymaga publicznych getterów w `OffscreenCache`** — `entityCacheBytes` i `entityCacheLimit` powinny być dostępne odczytowo (read-only). Po refaktorze: z `EntityCacheBudget`.
+> **Wymaga publicznych getterów w `OffscreenCache`** — `entityCacheBytes`, `entityCacheLimit` i `entityCachePercent` powinny być dostępne odczytowo (read-only). Po refaktorze: z `EntityCacheBudget`.
 
 ### Sekcja: Dev Flags
 

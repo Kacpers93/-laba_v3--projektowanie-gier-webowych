@@ -4,7 +4,10 @@
 Przechowywanie i ponowne uzycie prerenderowanych tekstur offscreen.
 
 ## Co zawiera
-- `OffscreenCache.ts`: klasa `OffscreenCache` z `getOrCreate`, `invalidate`, `clear`, `size`, `estimatedBytes`.
+- `OffscreenCache.ts`: fasada cache z `getOrCreate`, `invalidate`, `clear`, `size`, `estimatedBytes`.
+- `EntityCacheBudget.ts`: licznik i limit pamieci dla kluczy bytow.
+- `EntityLruIndex.ts`: indeks LRU kluczy bytow.
+- `cacheTypes.ts`: wspolne typy i helpery (`CacheEntry`, `isEntityKey`, `estimateEntryBytes`).
 
 ## Zaleznosci zewnetrzne i wewnetrzne
 - Zewnetrzne: `OffscreenCanvas`, `OffscreenCanvasRenderingContext2D`.
@@ -20,5 +23,5 @@ const canvas = cache.getOrCreate('bg', w, h, (ctx) => {
 ```
 
 ## Czego NIE robi
-- Nie implementuje polityki LRU ani limitu pamieci.
+- Nie zarzadza cachem dyskowym ani persystencja.
 - Nie serializuje cache do dysku.

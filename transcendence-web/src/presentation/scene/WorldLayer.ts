@@ -5,6 +5,7 @@ import type { SceneLayer } from './SceneLayer';
 export class WorldLayer implements SceneLayer {
   readonly order = 2;
   private renderables: Renderable[] = [];
+  private _lastVisibleCount = 0;
 
   /** Dodaje renderable do warstwy. */
   public addRenderable(r: Renderable): void {
@@ -23,6 +24,7 @@ export class WorldLayer implements SceneLayer {
   public render(ctx: CanvasRenderingContext2D, camera: Camera, alpha: number): void {
     const viewportWidth = ctx.canvas.width;
     const viewportHeight = ctx.canvas.height;
+    let visibleCount = 0;
 
     camera.applyTransform(ctx);
 
@@ -53,9 +55,27 @@ export class WorldLayer implements SceneLayer {
         return;
       }
 
+      visibleCount += 1;
       renderable.render(ctx, alpha);
     });
 
+    this._lastVisibleCount = visibleCount;
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /** Laczna liczba zarejestrowanych renderables. */
+  public get renderableCount(): number {
+    return this.renderables.length;
+  }
+
+  /** Ile renderables bylo widocznych w ostatniej klatce render(). */
+  public get lastVisibleCount(): number {
+    return this._lastVisibleCount;
+  }
+
+  /** Ile renderables bylo culled w ostatniej klatce. */
+  public get lastCulledCount(): number {
+    return this.renderables.length - this._lastVisibleCount;
   }
 }

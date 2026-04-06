@@ -1,12 +1,12 @@
+import { EntityCacheBudget } from './EntityCacheBudget';
+import { EntityLruIndex } from './EntityLruIndex';
+import type { CacheEntry } from './cacheTypes';
+import { estimateEntryBytes, isEntityKey } from './cacheTypes';
+
 export class OffscreenCache {
-  private readonly cache = new Map<
-    string,
-    { canvas: OffscreenCanvas; width: number; height: number }
-  >();
-  private entityCacheLimit = 64 * 1024 * 1024;
-  private entityCacheBytes = 0;
-  private entityAccessCounter = 0;
-  private readonly entityAccess = new Map<string, number>();
+  private readonly cache = new Map<string, CacheEntry>();
+  private readonly entityBudget = new EntityCacheBudget();
+  private readonly lruIndex = new EntityLruIndex();
 
   public getOrCreate(
     key: string,
@@ -17,7 +17,7 @@ export class OffscreenCache {
     const entry = this.cache.get(key);
 
     if (entry && entry.width === width && entry.height === height) {
-      this.touchEntityKey(key);
+      this.touchEntityKeyIfNeeded(key);
       return entry.canvas;
     }
 
@@ -48,20 +48,34 @@ export class OffscreenCache {
 
   public clear(): void {
     this.cache.clear();
-    this.entityCacheBytes = 0;
-    this.entityAccess.clear();
-    this.entityAccessCounter = 0;
+    this.entityBudget.reset();
+    this.lruIndex.clear();
   }
 
   /** Ustawia limit pamieci dla cache bytow (bajty). Domyslnie: 64 MB. */
   public setEntityCacheLimit(bytes: number): void {
-    this.entityCacheLimit = Math.max(0, bytes);
+    this.entityBudget.setLimit(bytes);
     this.evictEntityCacheIfNeeded();
   }
 
   /** Czy cache bytow przekracza limit. */
   public isEntityCacheFull(): boolean {
-    return this.entityCacheBytes > this.entityCacheLimit;
+    return this.entityBudget.isFull();
+  }
+
+  /** Ile bajtow cache bytow jest wykorzystane. */
+  public get entityCacheBytes(): number {
+    return this.entityBudget.getUsedBytes();
+  }
+
+  /** Aktualny limit cache bytow (bajty). */
+  public get entityCacheLimit(): number {
+    return this.entityBudget.getLimit();
+  }
+
+  /** Procent wykorzystania limitu cache bytow (0-100). */
+  public get entityCachePercent(): number {
+    return this.entityBudget.getUsagePercent();
   }
 
   public get size(): number {
@@ -76,55 +90,35 @@ export class OffscreenCache {
     return total;
   }
 
-  private isEntityKey(key: string): boolean {
-    return key.startsWith('entity-');
-  }
-
-  private estimateEntryBytes(width: number, height: number): number {
-    return width * height * 4;
-  }
-
-  private touchEntityKey(key: string): void {
-    if (!this.isEntityKey(key) || !this.cache.has(key)) {
+  private touchEntityKeyIfNeeded(key: string): void {
+    if (!isEntityKey(key) || !this.cache.has(key)) {
       return;
     }
-    this.entityAccessCounter += 1;
-    this.entityAccess.set(key, this.entityAccessCounter);
+
+    this.lruIndex.touch(key);
   }
 
   private addKeyAccounting(key: string, width: number, height: number): void {
-    if (!this.isEntityKey(key)) {
+    if (!isEntityKey(key)) {
       return;
     }
 
-    this.entityCacheBytes += this.estimateEntryBytes(width, height);
-    this.entityAccessCounter += 1;
-    this.entityAccess.set(key, this.entityAccessCounter);
+    this.entityBudget.add(estimateEntryBytes(width, height));
+    this.lruIndex.touch(key);
   }
 
   private removeKeyAccounting(key: string, width: number, height: number): void {
-    if (!this.isEntityKey(key)) {
+    if (!isEntityKey(key)) {
       return;
     }
 
-    this.entityCacheBytes -= this.estimateEntryBytes(width, height);
-    if (this.entityCacheBytes < 0) {
-      this.entityCacheBytes = 0;
-    }
-    this.entityAccess.delete(key);
+    this.entityBudget.subtract(estimateEntryBytes(width, height));
+    this.lruIndex.remove(key);
   }
 
   private evictEntityCacheIfNeeded(): void {
     while (this.isEntityCacheFull()) {
-      let lruKey: string | undefined;
-      let oldestAccess = Number.POSITIVE_INFINITY;
-
-      this.entityAccess.forEach((access, key) => {
-        if (access < oldestAccess) {
-          oldestAccess = access;
-          lruKey = key;
-        }
-      });
+      const lruKey = this.lruIndex.getLruKey();
 
       if (!lruKey) {
         break;
@@ -132,7 +126,7 @@ export class OffscreenCache {
 
       const entry = this.cache.get(lruKey);
       if (!entry) {
-        this.entityAccess.delete(lruKey);
+        this.lruIndex.remove(lruKey);
         continue;
       }
 

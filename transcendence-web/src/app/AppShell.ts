@@ -23,7 +23,26 @@ import { WorldLayer } from '@presentation/scene/WorldLayer';
 import type { Renderable } from '@/types/engine';
 
 const CAMERA_SPEED = 220;
-const DEV_TEST_ENTITY_ENABLED = true;
+const DEV_OVERLAY_UPDATE_INTERVAL = 0.25;
+const DEV_TEST_ENTITY_STORAGE_KEY = 'dev-test-entity';
+const DEV_TEST_ENTITY_ID = 'dev-test-ship';
+
+type DevOverlayLike = {
+  mount(parent: HTMLElement): void;
+  unmount(): void;
+  toggle(): void;
+  registerSection(id: string, label: string): {
+    registerMetric(id: string, label: string, getter: () => string | number): void;
+    registerControl(
+      id: string,
+      label: string,
+      type: 'checkbox',
+      initialValue: boolean,
+      onChange: (value: boolean) => void,
+    ): void;
+  };
+  update(): void;
+};
 
 class DevTestEntity extends BaseEntity {
   public readonly boundingBox: AABB = {
@@ -61,12 +80,14 @@ export class AppShell {
   private readonly parallaxLayer: ParallaxLayer;
   private readonly worldLayer: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
+  private devOverlay?: DevOverlayLike;
 
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
   private readonly camera: Camera;
   private readonly gameInput: GameInput;
   private readonly uiInput: UIInput;
+  private devOverlayUpdateElapsed = 0;
 
   private started = false;
 
@@ -122,9 +143,71 @@ export class AppShell {
     this.sceneRenderer.addLayer(new EffectsLayer());
     this.sceneRenderer.addLayer(new DebugLayer());
 
-    this.registerDevVisualProfiles();
-    this.registerDevTestEntity();
-    this.exposeDevTools();
+    if (import.meta.env.DEV) {
+      this.registerDevVisualProfiles();
+      this.setDevTestEntityEnabled(this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, true));
+      this.exposeDevTools();
+
+      void import('@dev/DevOverlayPanel').then(({ DevOverlayPanel }) => {
+        const overlay = new DevOverlayPanel();
+        this.devOverlay = overlay;
+        overlay.mount(document.body);
+
+        const entitiesSection = overlay.registerSection('entities', 'Entities');
+        entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
+
+        const categories = [
+          'ship',
+          'station',
+          'gate',
+          'wreck',
+          'projectile',
+          'celestial',
+          'environment',
+        ] as const;
+        categories.forEach((category) => {
+          entitiesSection.registerMetric(category, category, () => this.entityManager.getByCategory(category).length);
+        });
+
+        const renderSection = overlay.registerSection('render', 'Render');
+        renderSection.registerMetric('renderables', 'renderables', () => this.worldLayer.renderableCount);
+        renderSection.registerMetric('visible', 'visible', () => this.worldLayer.lastVisibleCount);
+        renderSection.registerMetric('culled', 'culled', () => this.worldLayer.lastCulledCount);
+
+        const cameraSection = overlay.registerSection('camera', 'Camera');
+        cameraSection.registerMetric('x', 'x', () => this.camera.position.x.toFixed(1));
+        cameraSection.registerMetric('y', 'y', () => this.camera.position.y.toFixed(1));
+        cameraSection.registerMetric('zoom', 'zoom', () => this.camera.zoom.toFixed(2));
+
+        const cacheSection = overlay.registerSection('cache', 'Cache');
+        cacheSection.registerMetric('used', 'used', () => {
+          const bytes = this.cache.entityCacheBytes;
+          const mb = bytes / (1024 * 1024);
+
+          if (mb < 0.1) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
+          }
+
+          return `${mb.toFixed(1)} MB`;
+        });
+        cacheSection.registerMetric('limit', 'limit', () => `${(this.cache.entityCacheLimit / (1024 * 1024)).toFixed(0)} MB`);
+        cacheSection.registerMetric('percent', 'percent', () => `${this.cache.entityCachePercent.toFixed(1)}%`);
+        cacheSection.registerMetric('entries', 'entries', () => this.cache.size);
+
+        const devFlagsSection = overlay.registerSection('dev-flags', 'Dev Flags');
+        devFlagsSection.registerControl(
+          'test-entity',
+          'Test entity',
+          'checkbox',
+          this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, true),
+          (enabled: boolean) => {
+            this.setDevTestEntityEnabled(enabled);
+          },
+        );
+      });
+
+      window.addEventListener('keydown', this.handleDevOverlayToggleKeydown);
+    }
 
     this.gameLoop = new GameLoop({
       tickRate: 30,
@@ -159,6 +242,10 @@ export class AppShell {
     this.gameLoop.stop();
     this.gameInput.destroy();
     this.uiInput.destroy();
+    if (import.meta.env.DEV) {
+      window.removeEventListener('keydown', this.handleDevOverlayToggleKeydown);
+      this.devOverlay?.unmount();
+    }
     window.removeEventListener('resize', this.handleResize);
   }
 
@@ -216,6 +303,18 @@ export class AppShell {
     });
 
     this.sceneRenderer.update(dt, this.camera);
+
+    if (!this.devOverlay) {
+      return;
+    }
+
+    this.devOverlayUpdateElapsed += dt;
+    if (this.devOverlayUpdateElapsed < DEV_OVERLAY_UPDATE_INTERVAL) {
+      return;
+    }
+
+    this.devOverlayUpdateElapsed = 0;
+    this.devOverlay.update();
   };
 
   private readonly onFrameRender = (alpha: number): void => {
@@ -290,7 +389,7 @@ export class AppShell {
   }
 
   private registerDevTestEntity(): void {
-    if (!DEV_TEST_ENTITY_ENABLED) {
+    if (this.entityManager.has(DEV_TEST_ENTITY_ID)) {
       return;
     }
 
@@ -306,6 +405,27 @@ export class AppShell {
     this.renderablesByEntityId.set(entity.id, renderable);
     this.worldLayer.addRenderable(renderable);
   }
+
+  private unregisterDevTestEntity(): void {
+    if (!this.entityManager.has(DEV_TEST_ENTITY_ID)) {
+      return;
+    }
+
+    this.entityManager.remove(DEV_TEST_ENTITY_ID);
+    this.renderablesByEntityId.delete(DEV_TEST_ENTITY_ID);
+    this.worldLayer.removeRenderable(DEV_TEST_ENTITY_ID);
+  }
+
+  private setDevTestEntityEnabled(enabled: boolean): void {
+    localStorage.setItem(DEV_TEST_ENTITY_STORAGE_KEY, String(enabled));
+    if (enabled) {
+      this.registerDevTestEntity();
+      return;
+    }
+
+    this.unregisterDevTestEntity();
+  }
+
 
   private pruneRenderables(): void {
     Array.from(this.renderablesByEntityId.keys()).forEach((entityId) => {
@@ -323,13 +443,36 @@ export class AppShell {
       __dev?: {
         entityManager: EntityManager;
         worldLayer: WorldLayer;
+        cache: OffscreenCache;
       };
     };
 
     devTarget.__dev = {
       entityManager: this.entityManager,
       worldLayer: this.worldLayer,
+      cache: this.cache,
     };
+  }
+
+  private readonly handleDevOverlayToggleKeydown = (event: KeyboardEvent): void => {
+    if (!this.devOverlay || event.key !== '6') {
+      return;
+    }
+
+    event.preventDefault();
+    this.devOverlay.toggle();
+  };
+
+  private readLocalStorageBoolean(key: string, fallbackValue: boolean): boolean {
+    const value = localStorage.getItem(key);
+    if (value === 'true') {
+      return true;
+    }
+    if (value === 'false') {
+      return false;
+    }
+
+    return fallbackValue;
   }
 
   private hasSavePreviousState(entity: GameEntity): entity is GameEntity & {
