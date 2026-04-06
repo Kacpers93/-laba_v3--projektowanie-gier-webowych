@@ -15,7 +15,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@engine/*": ["./src/engine/*"],
+      "@entities/*": ["./src/entities/*"],
       "@physics/*": ["./src/physics/*"],
+      "@presentation/*": ["./src/presentation/*"],
       "@world/*": ["./src/world/*"],
       "@types/*": ["./src/types/*"]
     }

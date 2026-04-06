@@ -1,4 +1,5 @@
 import type { Vector2 } from './common';
+import type { EntityId } from './common';
 
 export interface GameLoopConfig {
   tickRate: number;
@@ -8,7 +9,12 @@ export interface GameLoopConfig {
 }
 
 export interface Renderable {
+  readonly entityId: EntityId;
   position: Vector2;
+  previousPosition: Vector2;
   rotation: number;
+  previousRotation: number;
+  readonly cullRadius: number;
+  visible: boolean;
   render(ctx: CanvasRenderingContext2D, alpha: number): void;
 }
