@@ -6,7 +6,8 @@ Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 ## Status implementacyjny
 - Etap 1: wdrożony.
 - Etap 2: wdrożony.
-- Etapy 3-9: planowane.
+- Etap 3: wdrożony.
+- Etapy 3.5–9: planowane.
 
 ## Etap 1
 `app/`, `engine/`, `physics/`, `types/`
@@ -34,6 +35,19 @@ Kryteria zamknięcia Etapu 2: `07_etap2-specyfikacja.md`, sekcja 5.
 `entities/base/`, `presentation/renderables/`, `presentation/profiles/`
 - wspólne kontrakty bytów świata,
 - wspólne kontrakty wizualne.
+
+Kryteria zamknięcia Etapu 3: `08_etap3-specyfikacja.md`, sekcja 11.
+
+## Etap 3.5
+`dev/`, `presentation/cache/` (refaktor), `presentation/scene/WorldLayer.ts` (rozszerzenie)
+- Dev Overlay Panel (zwijany panel debug po prawej stronie z metrykami runtime),
+- rozszerzalny system sekcji i metryk (`registerSection`, `registerMetric`),
+- toggle test bytu (checkbox + `localStorage` zamiast hardkodowanej stałej),
+- skrót klawiaturowy F3 do pokazywania/ukrywania panelu,
+- refaktor `OffscreenCache.ts` na fasadę + `EntityCacheBudget` + `EntityLruIndex` + `cacheTypes`,
+- publiczne gettery metryk render w `WorldLayer` (`renderableCount`, `lastVisibleCount`, `lastCulledCount`).
+
+Kryteria zamknięcia Etapu 3.5: `09_etap3.5-specyfikacja.md`, sekcja 14.
 
 ## Etap 4
 `public/art/ships/`, `stations/`, `gates/`, `celestial/`
