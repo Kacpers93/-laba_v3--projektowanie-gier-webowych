@@ -7,7 +7,8 @@ Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 - Etap 1: wdrożony.
 - Etap 2: wdrożony.
 - Etap 3: wdrożony.
-- Etapy 3.5–9: planowane.
+- Etap 3.5: wdrożony.
+- Etapy 4–9: planowane.
 
 ## Etap 1
 `app/`, `engine/`, `physics/`, `types/`
@@ -56,6 +57,17 @@ Kryteria zamknięcia Etapu 3.5: `09_etap3.5-specyfikacja.md`, sekcja 14.
 ## Etap 5
 `entities/ships/`, `stations/`, `gates/`, `world/`
 - osadzenie bytów świata w systemach i scenie.
+
+## Etap 5.5
+`world/`, `systems/gates/`, `systems/spawn/`
+- systemy i sektory,
+- wrota i przejścia między systemami,
+- widoczność jednostek przez bramy,
+- spawnowanie z limitami,
+- asteroidy z pól,
+- reputacja sektora i gating modulów.
+
+- Wstępny model Etapu 5.5: `docs/specs/05_etap5.5-world-architecture.md`
 
 ## Etap 6
 `systems/reactor/`, `ship-mass/`, `flight/`, `weapons/`, `shields/`, `capture/`

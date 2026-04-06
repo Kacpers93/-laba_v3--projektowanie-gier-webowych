@@ -866,16 +866,16 @@ Etap 3.5 **nie** obejmuje:
 
 Po uruchomieniu `npm run dev` i otwarciu `http://localhost:5173`:
 
-1. **Panel widoczny** — po prawej stronie ekranu widać półprzezroczysty panel z 5 sekcjami (Entities, Render, Camera, Cache, Dev Flags).
-2. **Metryki aktualizowane** — pozycja kamery zmienia się na żywo przy ruchu strzałkami. Entity count = 1 (test byt). Render visible zmienia się po oddaleniu kamery od bytu.
-3. **6 toggle** — wciśnięcie 6 ukrywa/pokazuje panel. Stan zapisywany w `localStorage`.
-4. **Collapse/expand** — kliknięcie nagłówka panelu zwija panel do samego nagłówka. Kliknięcie nagłówka sekcji zwija sekcję.
-5. **Test entity checkbox** — odznaczenie checkboxa "Test entity" usuwa trójkąt z canvasu. Zaznaczenie przywraca go. Stan persystowany w `localStorage`.
-6. **Cache metryki** — sekcja Cache pokazuje `used`, `limit`, `percent` — wartości odpowiadają stanowi `OffscreenCache`.
-7. **Refaktor OffscreenCache** — `OffscreenCache.ts` jest fasadą delegującą do `EntityCacheBudget` i `EntityLruIndex`. Tło, paralaksa, WorldLayer działają bez zmian.
-8. **WorldLayer metryki** — `renderableCount`, `lastVisibleCount`, `lastCulledCount` zwracają poprawne wartości.
-9. **Brak błędów** — zero błędów w konsoli. `npm run type-check` przechodzi bez errorów. `npm run build` buduje bez błędów.
-10. **Prod bez artefaktów dev** — po buildzie produkcyjnym brak panelu, brak listenera toggle i brak stylu dev overlay.
+1. **Panel widoczny** — po prawej stronie ekranu widać półprzezroczysty panel z 5 sekcjami (Entities, Render, Camera, Cache, Dev Flags). | Zrobione 
+2. **Metryki aktualizowane** — pozycja kamery zmienia się na żywo przy ruchu strzałkami. Entity count = 1 (test byt). Render visible zmienia się po oddaleniu kamery od bytu. | Zrobione 
+3. **6 toggle** — wciśnięcie 6 ukrywa/pokazuje panel. Stan zapisywany w `localStorage`. | Zrobione 
+4. **Collapse/expand** — kliknięcie nagłówka panelu zwija panel do samego nagłówka. Kliknięcie nagłówka sekcji zwija sekcję. | Zrobione 
+5. **Test entity checkbox** — odznaczenie checkboxa "Test entity" usuwa trójkąt z canvasu. Zaznaczenie przywraca go. Stan persystowany w `localStorage`. | Zrobione 
+6. **Cache metryki** — sekcja Cache pokazuje `used`, `limit`, `percent` — wartości odpowiadają stanowi `OffscreenCache`. | Zrobione 
+7. **Refaktor OffscreenCache** — `OffscreenCache.ts` jest fasadą delegującą do `EntityCacheBudget` i `EntityLruIndex`. Tło, paralaksa, WorldLayer działają bez zmian. | Zrobione 
+8. **WorldLayer metryki** — `renderableCount`, `lastVisibleCount`, `lastCulledCount` zwracają poprawne wartości. | Zrobione 
+9. **Brak błędów** — zero błędów w konsoli. `npm run type-check` przechodzi bez errorów. `npm run build` buduje bez błędów. | Zrobione 
+10. **Prod bez artefaktów dev** — po buildzie produkcyjnym brak panelu, brak listenera toggle i brak stylu dev overlay. | Zrobione 
 
 ### Artefakty zamykające Etap 3.5
 
