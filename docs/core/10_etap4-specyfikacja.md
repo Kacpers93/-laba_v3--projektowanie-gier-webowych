@@ -907,20 +907,20 @@ Krok 14: Weryfikacja ręczna
 
 ### Testy ręczne
 
-| # | Test | Oczekiwany wynik |
-|---|---|---|
-| M1 | Uruchom `npm run dev`, otwórz konsolę — brak błędów i ostrzeżeń walidacji manifestu | Konsola czysta |
-| M2 | Dev Overlay, sekcja Assets: wartości `loaded`, `total`, `failed` | `loaded: 8`, `total: 8`, `failed: 0` |
-| M3 | Ręcznie dodaj byt ze sprite'owym profilem przez `__dev` w konsoli | Sprite renderuje się na canvasie |
-| M4 | Zmień URL w manifeście na nieistniejący plik, przeładuj stronę | Czerwony prostokąt z napisem kategorii zamiast sprite'a |
-| M5 | Przesuń kamerę daleko od sprite'owego bytu | Sprite znika (culling), `lastCulledCount` wzrasta |
-| M6 | Wróć kamerą do bytu | Sprite pojawia się ponownie |
-| M7 | Zmień rozmiar okna przeglądarki | Brak artefaktów, sprite dalej renderuje się poprawnie |
-| M8 | Uruchom `npm run build` | Buduje bez błędów, katalog `dist/` zawiera pliki z `public/art/` |
-| M9 | Uruchom `npm run type-check` | 0 errors |
-| M10 | Sprawdź, że proceduralne obiekty (test byt, tło, paralaksa) działają bez zmian | Brak regresji |
-| M11 | Usuń `asset-manifest.json`, przeładuj stronę | Ostrzeżenie w konsoli, gra startuje z proceduralnymi profilami, brak crash-a |
-| M12 | Wstaw uszkodzony JSON do `asset-manifest.json`, przeładuj | Ostrzeżenie w konsoli, gra startuje, brak crash-a |
+| # | Test | Oczekiwany wynik | Wynik zgodny z oczekiwaniami? |
+|---|---|---|---|
+| M1 | Uruchom `npm run dev`, otwórz konsolę — brak błędów i ostrzeżeń walidacji manifestu | Konsola czysta | Tak |
+| M2 | Dev Overlay, sekcja Assets: wartości `loaded`, `total`, `failed` | `loaded: 8`, `total: 8`, `failed: 0` | Tak |
+| M3 | Ręcznie dodaj byt ze sprite'owym profilem przez `__dev` w konsoli | Sprite renderuje się na canvasie | Tak |
+| M4 | Zmień URL w manifeście na nieistniejący plik, przeładuj stronę | Czerwony prostokąt z napisem kategorii zamiast sprite'a | Tak |
+| M5 | Przesuń kamerę daleko od sprite'owego bytu | Sprite znika (culling), `lastCulledCount` wzrasta | Tak |
+| M6 | Wróć kamerą do bytu | Sprite pojawia się ponownie | Tak |
+| M7 | Zmień rozmiar okna przeglądarki | Brak artefaktów, sprite dalej renderuje się poprawnie | Tak |
+| M8 | Uruchom `npm run build` | Buduje bez błędów, katalog `dist/` zawiera pliki z `public/art/` | Tak |
+| M9 | Uruchom `npm run type-check` | 0 errors | Tak 
+| M10 | Sprawdź, że proceduralne obiekty (test byt, tło, paralaksa) działają bez zmian | Brak regresji | Tak |
+| M11 | Usuń `asset-manifest.json`, przeładuj stronę | Ostrzeżenie w konsoli, gra startuje z proceduralnymi profilami, brak crash-a | Tak |
+| M12 | Wstaw uszkodzony JSON do `asset-manifest.json`, przeładuj | Ostrzeżenie w konsoli, gra startuje, brak crash-a | Tak |
 
 ### Testy automatyczne (scope Etapu 4)
 

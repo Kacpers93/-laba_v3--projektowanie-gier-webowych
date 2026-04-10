@@ -5,8 +5,10 @@ import { UIInput } from '@engine/input/UIInput';
 import { GameLoop } from '@engine/loop/GameLoop';
 import { Camera } from '@engine/renderer/Camera';
 import { Renderer } from '@engine/renderer/Renderer';
+import { AssetLoader } from '@assets/AssetLoader';
+import { registerManifestProfiles } from '@assets/registerManifestProfiles';
 import { BaseEntity, EntityManager } from '@entities/base';
-import type { GameEntity } from '@entities/base';
+import type { EntityCategory, GameEntity } from '@entities/base';
 import { Vec2 } from '@physics/Vector2';
 import type { AABB } from '@physics/types';
 import { OffscreenCache } from '@presentation/cache/OffscreenCache';
@@ -26,6 +28,9 @@ const CAMERA_SPEED = 220;
 const DEV_OVERLAY_UPDATE_INTERVAL = 0.25;
 const DEV_TEST_ENTITY_STORAGE_KEY = 'dev-test-entity';
 const DEV_TEST_ENTITY_ID = 'dev-test-ship';
+const DEV_SPRITE_TEST_ENTITY_ID = 'dev-sprite-test';
+const DEV_SPRITE_TEST_START_X = 140;
+const DEV_SPRITE_TEST_START_Y = -90;
 
 type DevOverlayLike = {
   mount(parent: HTMLElement): void;
@@ -33,6 +38,13 @@ type DevOverlayLike = {
   toggle(): void;
   registerSection(id: string, label: string): {
     registerMetric(id: string, label: string, getter: () => string | number): void;
+    registerControl(
+      id: string,
+      label: string,
+      type: 'button',
+      initialValue: undefined,
+      onChange: () => void,
+    ): void;
     registerControl(
       id: string,
       label: string,
@@ -65,6 +77,22 @@ class DevTestEntity extends BaseEntity {
   }
 }
 
+class DevSpriteTestEntity extends BaseEntity {
+  public readonly boundingBox: AABB;
+
+  public constructor(category: EntityCategory, width: number, height: number) {
+    super(DEV_SPRITE_TEST_ENTITY_ID, category, {
+      x: DEV_SPRITE_TEST_START_X,
+      y: DEV_SPRITE_TEST_START_Y,
+    });
+
+    this.boundingBox = {
+      min: new Vec2(-width / 2, -height / 2),
+      max: new Vec2(width / 2, height / 2),
+    };
+  }
+}
+
 export class AppShell {
   public readonly canvas: HTMLCanvasElement;
   public readonly renderer: Renderer;
@@ -76,11 +104,13 @@ export class AppShell {
   public readonly visualProfileRegistry: VisualProfileRegistry;
   public readonly renderableFactory: RenderableFactory;
   private readonly cache: OffscreenCache;
+  private readonly assetLoader: AssetLoader;
   private readonly backgroundLayer: BackgroundLayer;
   private readonly parallaxLayer: ParallaxLayer;
   private readonly worldLayer: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
   private devOverlay?: DevOverlayLike;
+  private activeSpriteTestProfileId: string | null = null;
 
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
@@ -117,7 +147,8 @@ export class AppShell {
     this.cache = new OffscreenCache();
     this.entityManager = new EntityManager();
     this.visualProfileRegistry = new VisualProfileRegistry();
-    this.renderableFactory = new RenderableFactory(this.cache);
+    this.assetLoader = new AssetLoader();
+    this.renderableFactory = new RenderableFactory(this.cache, this.assetLoader);
 
     this.sceneRenderer = new SceneRenderer();
 
@@ -194,6 +225,21 @@ export class AppShell {
         cacheSection.registerMetric('percent', 'percent', () => `${this.cache.entityCachePercent.toFixed(1)}%`);
         cacheSection.registerMetric('entries', 'entries', () => this.cache.size);
 
+        const assetsSection = overlay.registerSection('assets', 'Assets');
+        assetsSection.registerMetric('loaded', 'loaded', () => this.assetLoader.stats.loaded);
+        assetsSection.registerMetric('total', 'total', () => this.assetLoader.stats.total);
+        assetsSection.registerMetric('failed', 'failed', () => this.assetLoader.stats.failed);
+
+        const spriteTestSection = overlay.registerSection('sprite-test', 'Sprite Test');
+        spriteTestSection.registerMetric('active', 'active', () => this.activeSpriteTestProfileId ?? '-');
+        spriteTestSection.registerMetric('available', 'available', () => this.getSpriteProfileIds().length);
+        spriteTestSection.registerControl('spawn-next', 'Spawn next sprite', 'button', undefined, () => {
+          this.spawnNextSpriteTestEntity();
+        });
+        spriteTestSection.registerControl('clear-sprite-test', 'Clear sprite test', 'button', undefined, () => {
+          this.clearSpriteTestEntity();
+        });
+
         const devFlagsSection = overlay.registerSection('dev-flags', 'Dev Flags');
         devFlagsSection.registerControl(
           'test-entity',
@@ -223,12 +269,19 @@ export class AppShell {
     window.addEventListener('resize', this.handleResize);
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     if (this.started) {
       return;
     }
 
     this.started = true;
+
+    const manifest = await this.assetLoader.loadManifest('/art/asset-manifest.json');
+    if (manifest) {
+      await this.assetLoader.preloadAll();
+      registerManifestProfiles(manifest, this.visualProfileRegistry);
+    }
+
     this.canvas.focus();
     this.gameLoop.start();
   }
@@ -424,6 +477,61 @@ export class AppShell {
     }
 
     this.unregisterDevTestEntity();
+  }
+
+  private getSpriteProfileIds(): string[] {
+    const manifest = this.assetLoader.getManifest();
+    if (!manifest) {
+      return [];
+    }
+
+    return manifest.assets
+      .map((entry) => entry.assetId)
+      .filter((profileId) => this.visualProfileRegistry.get(profileId)?.source.type === 'sprite');
+  }
+
+  private spawnNextSpriteTestEntity(): void {
+    const spriteProfileIds = this.getSpriteProfileIds();
+    if (spriteProfileIds.length === 0) {
+      console.warn('[AppShell] No sprite profiles available for sprite test.');
+      return;
+    }
+
+    const currentIndex = this.activeSpriteTestProfileId
+      ? spriteProfileIds.indexOf(this.activeSpriteTestProfileId)
+      : -1;
+
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % spriteProfileIds.length;
+    const nextProfileId = spriteProfileIds[nextIndex];
+    this.spawnSpriteTestEntity(nextProfileId);
+  }
+
+  private spawnSpriteTestEntity(profileId: string): void {
+    const profile = this.visualProfileRegistry.get(profileId);
+    if (!profile || profile.source.type !== 'sprite') {
+      console.warn(`[AppShell] Cannot spawn sprite test entity for profile: ${profileId}.`);
+      return;
+    }
+
+    this.clearSpriteTestEntity();
+
+    const entity = new DevSpriteTestEntity(profile.category, profile.size.width, profile.size.height);
+    this.entityManager.add(entity);
+
+    const renderable = this.renderableFactory.create(entity, profile);
+    this.renderablesByEntityId.set(entity.id, renderable);
+    this.worldLayer.addRenderable(renderable);
+    this.activeSpriteTestProfileId = profile.profileId;
+  }
+
+  private clearSpriteTestEntity(): void {
+    if (this.entityManager.has(DEV_SPRITE_TEST_ENTITY_ID)) {
+      this.entityManager.remove(DEV_SPRITE_TEST_ENTITY_ID);
+    }
+
+    this.renderablesByEntityId.delete(DEV_SPRITE_TEST_ENTITY_ID);
+    this.worldLayer.removeRenderable(DEV_SPRITE_TEST_ENTITY_ID);
+    this.activeSpriteTestProfileId = null;
   }
 
 

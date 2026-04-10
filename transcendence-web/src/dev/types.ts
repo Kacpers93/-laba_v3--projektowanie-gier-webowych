@@ -6,8 +6,8 @@ export interface DevMetric {
   element?: HTMLElement;
 }
 
-/** Kontrola interaktywna (checkbox, slider, button w przyszlosci). */
-export interface DevControl {
+/** Kontrola interaktywna checkbox. */
+export interface DevCheckboxControl {
   id: string;
   label: string;
   type: 'checkbox';
@@ -15,3 +15,14 @@ export interface DevControl {
   onChange: (value: boolean) => void;
   element?: HTMLElement;
 }
+
+/** Kontrola interaktywna button. */
+export interface DevButtonControl {
+  id: string;
+  label: string;
+  type: 'button';
+  onClick: () => void;
+  element?: HTMLElement;
+}
+
+export type DevControl = DevCheckboxControl | DevButtonControl;

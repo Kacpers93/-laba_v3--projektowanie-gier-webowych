@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-04-10T12:00:00Z",
+  "assets": [
+    {
+      "assetId": "scout-mk1",
+      "category": "ship",
+      "url": "/art/ships/scout-mk1.png",
+      "frameWidth": 64,
+      "frameHeight": 40,
+      "worldSize": { "width": 48, "height": 30 },
+      "cullRadius": 32,
+      "version": 1,
+      "tags": ["light", "combat"]
+    },
+    {
+      "assetId": "freighter-standard",
+      "category": "ship",
+      "url": "/art/ships/freighter-standard.png",
+      "frameWidth": 96,
+      "frameHeight": 64,
+      "worldSize": { "width": 72, "height": 48 },
+      "cullRadius": 50,
+      "version": 1,
+      "tags": ["heavy", "cargo"]
+    },
+    {
+      "assetId": "trading-outpost",
+      "category": "station",
+      "url": "/art/stations/trading-outpost.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "worldSize": { "width": 96, "height": 96 },
+      "cullRadius": 72,
+      "version": 1,
+      "tags": ["commerce"]
+    },
+    {
+      "assetId": "mining-platform",
+      "category": "station",
+      "url": "/art/stations/mining-platform.png",
+      "frameWidth": 112,
+      "frameHeight": 96,
+      "worldSize": { "width": 84, "height": 72 },
+      "cullRadius": 64,
+      "version": 1,
+      "tags": ["industrial"]
+    },
+    {
+      "assetId": "stargate-standard",
+      "category": "gate",
+      "url": "/art/gates/stargate-standard.png",
+      "frameWidth": 80,
+      "frameHeight": 96,
+      "worldSize": { "width": 60, "height": 72 },
+      "cullRadius": 56,
+      "version": 1,
+      "tags": ["standard"]
+    },
+    {
+      "assetId": "jumpgate-ancient",
+      "category": "gate",
+      "url": "/art/gates/jumpgate-ancient.png",
+      "frameWidth": 96,
+      "frameHeight": 112,
+      "worldSize": { "width": 72, "height": 84 },
+      "cullRadius": 64,
+      "version": 1,
+      "tags": ["ancient", "rare"]
+    },
+    {
+      "assetId": "planet-terran",
+      "category": "celestial",
+      "url": "/art/celestial/planet-terran.png",
+      "frameWidth": 256,
+      "frameHeight": 256,
+      "worldSize": { "width": 200, "height": 200 },
+      "cullRadius": 140,
+      "version": 1,
+      "tags": ["planet", "habitable"]
+    },
+    {
+      "assetId": "asteroid-rocky",
+      "category": "celestial",
+      "url": "/art/celestial/asteroid-rocky.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "worldSize": { "width": 36, "height": 36 },
+      "cullRadius": 26,
+      "version": 1,
+      "tags": ["asteroid", "mineable"]
+    }
+  ]
+}

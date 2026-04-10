@@ -54,6 +54,8 @@ Kryteria zamknięcia Etapu 3.5: `09_etap3.5-specyfikacja.md`, sekcja 14.
 `public/art/ships/`, `stations/`, `gates/`, `celestial/`
 - przygotowanie pierwszych spójnych assetów.
 
+Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
+
 ## Etap 5
 `entities/ships/`, `stations/`, `gates/`, `world/`
 - osadzenie bytów świata w systemach i scenie.

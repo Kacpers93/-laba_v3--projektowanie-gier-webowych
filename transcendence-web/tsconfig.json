@@ -14,6 +14,7 @@
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
+      "@assets/*": ["./src/presentation/assets/*"],
       "@dev/*": ["./src/dev/*"],
       "@engine/*": ["./src/engine/*"],
       "@entities/*": ["./src/entities/*"],

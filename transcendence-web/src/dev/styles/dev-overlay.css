@@ -103,3 +103,20 @@
   accent-color: #2ec4b6;
   cursor: pointer;
 }
+
+.dev-overlay__button {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d8ec;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dev-overlay__button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}

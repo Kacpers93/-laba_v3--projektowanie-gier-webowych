@@ -17,10 +17,10 @@ Każdy ważny obiekt świata ma dwie strony:
 - `effects/` — planowane (Etap 9)
 
 ## Struktura `public/art/`
-- `ships/` (planowane)
-- `stations/` (planowane)
-- `gates/` (planowane)
-- `celestial/` (planowane)
+- `ships/` (Etap 4)
+- `stations/` (Etap 4)
+- `gates/` (Etap 4)
+- `celestial/` (Etap 4)
 - `effects/` (planowane)
 - `ui/` (planowane)
 - `atlases/` (planowane)
@@ -42,3 +42,4 @@ Każdy ważny obiekt świata ma dwie strony:
 - Nie używamy przypadkowych luźnych assetów bez kategorii i atlasów.
 
 Kontrakty scene i cache Etapu 2: `07_etap2-specyfikacja.md`.
+Kontrakty assetow Etapu 4: `10_etap4-specyfikacja.md`.

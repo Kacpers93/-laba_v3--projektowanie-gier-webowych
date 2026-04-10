@@ -8,7 +8,7 @@ export async function bootstrap(): Promise<void> {
     }
 
     const appShell = new AppShell(root);
-    appShell.start();
+    await appShell.start();
   } catch (error) {
     const fallbackRoot = document.body;
     const errorBox = document.createElement('pre');

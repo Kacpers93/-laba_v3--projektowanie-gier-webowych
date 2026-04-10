@@ -1,5 +1,6 @@
 import type { EntityId, Vector2 } from '@/types/common';
 import type { Renderable } from '@/types/engine';
+import type { AssetLoader } from '@assets/AssetLoader';
 import type { OffscreenCache } from '@presentation/cache/OffscreenCache';
 import type { VisualProfile } from '@presentation/profiles/VisualProfile';
 
@@ -19,6 +20,7 @@ export class EntityRenderable implements Renderable {
     public readonly entityId: EntityId,
     private readonly profile: VisualProfile,
     private readonly cache: OffscreenCache,
+    private readonly assetLoader?: AssetLoader,
   ) {
     this.position = { x: 0, y: 0 };
     this.previousPosition = { x: 0, y: 0 };
@@ -77,8 +79,31 @@ export class EntityRenderable implements Renderable {
       });
 
       ctx.drawImage(sprite, -width / 2, -height / 2);
+    } else if (source.type === 'sprite') {
+      const image = this.assetLoader?.getImage(this.profile.profileId) ?? null;
+
+      if (!image) {
+        this.renderFallback(ctx);
+      } else {
+        const { width, height } = this.profile.size;
+        ctx.drawImage(image, -width / 2, -height / 2, width, height);
+      }
     }
 
     ctx.restore();
+  }
+
+  private renderFallback(ctx: CanvasRenderingContext2D): void {
+    const { width, height } = this.profile.size;
+    ctx.fillStyle = '#ff2244';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(-width / 2, -height / 2, width, height);
+    ctx.globalAlpha = 1.0;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.profile.category.toUpperCase(), 0, 0);
   }
 }

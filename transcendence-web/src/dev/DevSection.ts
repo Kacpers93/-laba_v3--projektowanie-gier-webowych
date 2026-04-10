@@ -43,9 +43,9 @@ export class DevSection {
    * Rejestruje kontrole (np. checkbox).
    * @param id - unikalny identyfikator kontroli.
    * @param label - etykieta.
-   * @param type - typ kontroli ('checkbox').
-   * @param initialValue - wartosc poczatkowa.
-   * @param onChange - callback przy zmianie.
+   * @param type - typ kontroli ('checkbox' lub 'button').
+   * @param initialValue - wartosc poczatkowa dla checkboxa.
+   * @param onChange - callback przy zmianie lub kliknieciu.
    */
   public registerControl(
     id: string,
@@ -53,14 +53,39 @@ export class DevSection {
     type: 'checkbox',
     initialValue: boolean,
     onChange: (value: boolean) => void,
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'button',
+    initialValue: undefined,
+    onChange: () => void,
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'checkbox' | 'button',
+    initialValue: boolean | undefined,
+    onChange: ((value: boolean) => void) | (() => void),
   ): void {
-    this.controls.set(id, {
-      id,
-      label,
-      type,
-      value: initialValue,
-      onChange,
-    });
+    if (type === 'checkbox') {
+      const checkboxOnChange = onChange as (value: boolean) => void;
+      this.controls.set(id, {
+        id,
+        label,
+        type,
+        value: initialValue ?? false,
+        onChange: checkboxOnChange,
+      });
+    } else {
+      const buttonOnClick = onChange as () => void;
+      this.controls.set(id, {
+        id,
+        label,
+        type,
+        onClick: buttonOnClick,
+      });
+    }
 
     if (this.containerElement) {
       this.render(this.containerElement);
@@ -130,23 +155,36 @@ export class DevSection {
     });
 
     this.controls.forEach((control) => {
-      const checkboxLabel = document.createElement('label');
-      checkboxLabel.className = 'dev-overlay__checkbox';
+      if (control.type === 'checkbox') {
+        const checkboxLabel = document.createElement('label');
+        checkboxLabel.className = 'dev-overlay__checkbox';
 
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = control.value;
-      input.addEventListener('change', () => {
-        control.value = input.checked;
-        control.onChange(control.value);
-      });
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = control.value;
+        input.addEventListener('change', () => {
+          control.value = input.checked;
+          control.onChange(control.value);
+        });
 
-      const text = document.createElement('span');
-      text.textContent = control.label;
+        const text = document.createElement('span');
+        text.textContent = control.label;
 
-      checkboxLabel.append(input, text);
-      control.element = checkboxLabel;
-      body.append(checkboxLabel);
+        checkboxLabel.append(input, text);
+        control.element = checkboxLabel;
+        body.append(checkboxLabel);
+      } else {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dev-overlay__button';
+        button.textContent = control.label;
+        button.addEventListener('click', () => {
+          control.onClick();
+        });
+
+        control.element = button;
+        body.append(button);
+      }
     });
 
     section.append(header, body);
