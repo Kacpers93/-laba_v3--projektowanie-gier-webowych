@@ -7,6 +7,8 @@
 
 Etap 5.5 definiuje strukturę świata gry na poziomie makro: systemy, sektory, wrota, obiekty w systemach oraz reguły spawnu i widoczności. Ustanawia kontrakty pozwalające na łączenie bytów w sensowne grupy, przechodzenie między systemami oraz zarządzanie ilością jednostek w danym obszarze.
 
+Zakres względem Etapu 5: Etap 5.5 rozszerza model świata o wielosystemowość, sektory i przejścia; nie redefiniuje formatu seeda pojedynczego systemu startowego z Etapu 5.
+
 Po zamknięciu Etapu 5.5 Etap 6 (systemy gameplayowe) może pracować na założeniu, że świat ma znaną strukturę i obiekty można przechodzić między systemami bez utraty synchronizacji.
 
 ---

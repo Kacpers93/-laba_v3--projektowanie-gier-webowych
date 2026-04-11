@@ -58,7 +58,9 @@ Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
 
 ## Etap 5
 `entities/ships/`, `stations/`, `gates/`, `world/`
-- osadzenie bytów świata w systemach i scenie.
+- osadzenie bytów świata w systemach i scenie,
+- seed systemu startowego (format i loader runtime),
+- statyczne pasy asteroid jako element seeda systemu startowego.
 
 ## Etap 5.5
 `world/`, `systems/gates/`, `systems/spawn/`
@@ -66,7 +68,7 @@ Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
 - wrota i przejścia między systemami,
 - widoczność jednostek przez bramy,
 - spawnowanie z limitami,
-- asteroidy z pól,
+- mechaniki wielosystemowe dla asteroid (pola/spawnery) bez redefinicji seeda systemu startowego z Etapu 5,
 - reputacja sektora i gating modulów.
 
 - Wstępny model Etapu 5.5: `docs/specs/05_etap5.5-world-architecture.md`

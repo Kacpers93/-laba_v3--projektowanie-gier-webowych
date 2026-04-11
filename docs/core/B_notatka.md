@@ -16,36 +16,32 @@
 
 ## Zachowanie brzegowe
 - Brak kolizji między obiektami; nachodzenie jest dozwolone.
-- Kwestia z-order: obiekty z tym samym `height` otrzymują deterministyczne, minimalne przesunięcie porządku (np. inkrementacja), tak aby uniknąć z-flicha.
-- Orbity mierzone w pikselach; `orbitPhase` wybierana losowo podczas generacji systemu i utrzymywana przy zapisie systemu.
-- Obiekty orbitują względem `parentId` (pozycja = parent.position + offset na orbicie).
-- Grupy asteroid reprezentowane jako elipsoidalny pas wokół orbity: `center`, `length`, `width`, `density`.
-- Brak profilu wizualnego → fallback proceduralny + log warning.
-- Duplikat `id` → odrzucenie wpisu i log error.
-- Obiekty poza granicami systemu: statyczne pomijane z ostrzeżeniem; dynamiczne tworzone jako nieaktywne.
-- Kolizje projektyli z obiektami planowane na późniejszy etap.
+- Kwestia z-order: obiekty z tym samym height otrzymują deterministyczne, minimalne przesunięcie porządku, aby uniknąć flicker.
+- Orbity mierzone w pikselach.
+- Obiekty orbitują względem parentId (pozycja = parent.position + offset na orbicie).
+- orbitPhase dla obiektów statycznych jest losowana podczas tworzenia seeda, a następnie zapisywana i traktowana jako dane stałe.
+- Brak profilu wizualnego: fallback proceduralny + warning.
+- Duplikat id: odrzucenie wpisu + error.
+- Obiekty poza granicą systemu:
+  - statyczne: pominięcie z warningiem,
+  - dynamiczne: utworzenie jako nieaktywne.
+- Kolizje projektyli z obiektami są poza zakresem Etapu 5.
 
 ## Typy obiektów i numeracja porządkowa
-- Wprowadzamy bazową numerację porządku rysowania (wartości całkowite 1..11) odpowiadającą głównym kategoriom obiektów:
-	- `1` — słońce (sun)
-	- `2` — planety (planet)
-	- `3` — księżyce (moon)
-	- `4` — wrota (gate)
-	- `5` — stacje (station)
-	- `6` — wraki stacji (station-wreck)
-	- `7` — asteroidy (asteroid)
-	- `8` — kontenery z ładunkami (container)
-	- `9` — wraki statków (ship-wreck)
-	- `10` — statki NPC (npc-ship)
-	- `11` — statek gracza (player-ship) — zawsze najwyżej (bazowa wartość 11)
-
-- Reguła dla wielu instancji tej samej kategorii: dopuszczamy część ułamkową (np. `2.1`, `2.2`, `2.3`) — część całkowita oznacza typ, część po przecinku to porządkowy indeks instancji. Wyższa wartość = rysowane 'nad' niższych wartości.
-- Przykład: pierwsza planeta → `height: 2.1`, druga → `height: 2.2`, trzecia → `height: 2.3`.
-- Asteroidy i grupy asteroid używają wartości typu `7` (+ ułamek dla poszczególnych sztuk). W `asteroidGroups` można podać `height: 7` jako domyślny porządek pasa, a poszczególne asteroidy wewnątrz grupy otrzymują `7.1`, `7.2` itd.
-- Validator seeda powinien wymusić, że `player-ship` ma `height >= 11` lub nadpisać wartość na `11` przy wczytywaniu seeda.
-
----- 
-Ten szkic jest wstępny — szczegóły implementacyjne (API seeda, format manifestu, implementacja grup asteroid) rozwinąć w następnych krokach.
+- Bazowa numeracja porządku rysowania (1..11):
+  - 1 — słońce (sun)
+  - 2 — planety (planet)
+  - 3 — księżyce (moon)
+  - 4 — wrota (gate)
+  - 5 — wraki stacji (station-wreck)
+  - 6 — stacje (station)
+  - 7 — asteroidy (asteroid)
+  - 8 — kontenery (container)
+  - 9 — wraki statków (ship-wreck)
+  - 10 — statki NPC (npc-ship)
+  - 11 — statek gracza (player-ship)
+- Dla wielu instancji tej samej kategorii dopuszczalna część ułamkowa (np. 2.1, 2.2, 2.3).
+- Validator seeda wymusza player-ship >= 11 (lub nadpisuje na 11 przy wczytaniu).
 
 ## Granica systemu
 - `informationalBoundaryRadius` (px): promień od centrum systemu używany w celach informacyjnych — UI może go rysować jako granicę pomocniczą.
@@ -59,117 +55,117 @@ Cel: łatwy do edycji, czytelny format (JSON lub YAML). Pliki umieścić w `publ
 Przykład (JSON):
 
 {
-	"systemId": "sol-001",
-	"name": "Sol",
-	"center": { "x": 0, "y": 0 },
-	"informationalBoundaryRadius": 1200,
-	"maxBoundaryRadius": 2500,
-	"objects": [
-		{
-			"id": "sun-1",
-			"type": "star",
-			"profileId": "star-yellow-large",
-			"orbitRadius": 0,
-			"orbitPhase": 0,
-			"orbitAround": null,
-			"static": true,
-			"height": 1
-		},
-		{
-			"id": "planet-1",
-			"type": "planet",
-			"profileId": "planet-terra",
-			"orbitRadius": 300,
-			"orbitPhase": 123.4, // stopnie 0..360, ustalone przy generacji
-			"orbitAround": "sun-1",
-			"static": true,
-			"height": 2.1
-		},
-		{
-			"id": "planet-2",
-			"type": "planet",
-			"profileId": "planet-barren",
-			"orbitRadius": 420,
-			"orbitPhase": 210,
-			"orbitAround": "sun-1",
-			"static": true,
-			"height": 2.2
-		},
-		{
-			"id": "moon-1",
-			"type": "moon",
-			"profileId": "moon-small",
-			"orbitRadius": 50,
-			"orbitPhase": 30,
-			"orbitAround": "planet-1",
-			"static": true,
-			"height": 3.1
-		},
-		{
-			"id": "station-1",
-			"type": "station",
-			"profileId": "trading-outpost",
-			"orbitRadius": 520,
-			"orbitPhase": 200,
-			"orbitAround": "sun-1",
-			"static": true,
-			"height": 5.1
-		},
-		{
-			"id": "container-1",
-			"type": "container",
-			"profileId": "cargo-container",
-			"orbitRadius": 850,
-			"orbitPhase": 215,
-			"orbitAround": "sun-1",
-			"static": true,
-			"height": 8.1
-		},
-		{
-			"id": "wreck-ship-1",
-			"type": "wreck",
-			"profileId": "ship-wreck-small",
-			"orbitRadius": 900,
-			"orbitPhase": 220,
-			"orbitAround": "sun-1",
-			"static": true,
-			"height": 9.1
-		},
-		{
-			"id": "npc-ship-1",
-			"type": "npc-ship",
-			"profileId": "npc-scout",
-			"orbitRadius": 1000,
-			"orbitPhase": 250,
-			"orbitAround": "sun-1",
-			"static": false,
-			"height": 10.1
-		},
-		{
-			"id": "player-ship",
-			"type": "player-ship",
-			"profileId": "player-falcon",
-			"orbitRadius": 120,
-			"orbitPhase": 180,
-			"orbitAround": "sun-1",
-			"static": false,
-			"height": 11
-		}
-	],
-	"asteroidGroups": [
-		{
-			"id": "belt-1",
-			"orbitRadius": 800,
-			"orbitPhase": 210,
-			"length": 1200,
-			"width": 180,
-			"density": 0.02,
-			"height": 7
-		}
-	]
+  "systemId": "sol-001",
+  "name": "Sol",
+  "center": { "x": 0, "y": 0 },
+  "informationalBoundaryRadius": 1200,
+  "maxBoundaryRadius": 2500,
+  "objects": [
+    {
+      "id": "sun-1",
+      "type": "star",
+      "profileId": "star-yellow-large",
+      "orbitRadius": 0,
+      "orbitPhase": 0,
+      "orbitAround": null,
+      "static": true,
+      "height": 1
+    },
+    {
+      "id": "planet-1",
+      "type": "planet",
+      "profileId": "planet-terra",
+      "orbitRadius": 300,
+      "orbitPhase": 123.4, // stopnie 0..360, ustalone przy generacji
+      "orbitAround": "sun-1",
+      "static": true,
+      "height": 2.1
+    },
+    {
+      "id": "planet-2",
+      "type": "planet",
+      "profileId": "planet-barren",
+      "orbitRadius": 420,
+      "orbitPhase": 210,
+      "orbitAround": "sun-1",
+      "static": true,
+      "height": 2.2
+    },
+    {
+      "id": "moon-1",
+      "type": "moon",
+      "profileId": "moon-small",
+      "orbitRadius": 50,
+      "orbitPhase": 30,
+      "orbitAround": "planet-1",
+      "static": true,
+      "height": 3.1
+    },
+    {
+      "id": "station-1",
+      "type": "station",
+      "profileId": "trading-outpost",
+      "orbitRadius": 520,
+      "orbitPhase": 200,
+      "orbitAround": "sun-1",
+      "static": true,
+      "height": 6.1
+    },
+    {
+      "id": "container-1",
+      "type": "container",
+      "profileId": "cargo-container",
+      "orbitRadius": 850,
+      "orbitPhase": 215,
+      "orbitAround": "sun-1",
+      "static": true,
+      "height": 8.1
+    },
+    {
+      "id": "wreck-ship-1",
+      "type": "wreck",
+      "profileId": "ship-wreck-small",
+      "orbitRadius": 900,
+      "orbitPhase": 220,
+      "orbitAround": "sun-1",
+      "static": true,
+      "height": 9.1
+    },
+    {
+      "id": "npc-ship-1",
+      "type": "npc-ship",
+      "profileId": "npc-scout",
+      "orbitRadius": 1000,
+      "orbitPhase": 250,
+      "orbitAround": "sun-1",
+      "static": false,
+      "height": 10.1
+    },
+    {
+      "id": "player-ship",
+      "type": "player-ship",
+      "profileId": "player-falcon",
+      "orbitRadius": 120,
+      "orbitPhase": 180,
+      "orbitAround": "sun-1",
+      "static": false,
+      "height": 11
+    }
+  ],
+  "asteroidGroups": [
+    {
+      "id": "belt-1",
+      "orbitRadius": 800,
+      "orbitPhase": 210,
+      "length": 1200,
+      "width": 180,
+      "density": 0.02,
+      "height": 7
+    }
+  ]
 }
-	/* Asteroidy nie są listowane pojedynczo w pliku seeda — patrz sekcja `asteroidGroups` */
-	Uwaga: plik seeda NIE powinien zawierać pojedynczych wpisów typu `asteroid`. Zamiast tego definiujemy parametry grupy (`length`, `width`, `density`, opcjonalnie `count`) a runtime rozwinie je do indywidualnych encji asteroidalnych podczas ładowania systemu. Indywidualne asteroidy dostaną wygenerowane fractional `height` (np. `7.1`, `7.2`), lub można przypisać `height` bazowe na poziomie grupy i dodać indeks.
+  /* Asteroidy nie są listowane pojedynczo w pliku seeda — patrz sekcja `asteroidGroups` */
+  Uwaga: plik seeda NIE powinien zawierać pojedynczych wpisów typu `asteroid`. Zamiast tego definiujemy parametry grupy (`length`, `width`, `density`, opcjonalnie `count`) a runtime rozwinie je do indywidualnych encji asteroidalnych podczas ładowania systemu. Indywidualne asteroidy dostaną wygenerowane fractional `height` (np. `7.1`, `7.2`), lub można przypisać `height` bazowe na poziomie grupy i dodać indeks.
 
 Pole `orbitPhase`: wartość w stopniach (0–360). Przy generacji systemu wybieramy losowy `orbitPhase` dla każdego obiektu statycznego i zapisujemy go — po odczycie pozycja jest deterministyczna.
 
@@ -184,17 +180,20 @@ Asteroidy — pasy i porządek zagnieżdżony
 - Typ bazowy asteroidy to `7`. Każdy pas otrzymuje indeks `beltIndex` (np. 1, 2, ...). Pas ma reprezentację porządkową `7.<beltIndex>`.
 - Indywidualne asteroidy generowane z grupy dostają zagnieżdżony identyfikator porządkowy `7.<beltIndex>.<asteroidIndex>` (gdzie `asteroidIndex` jest numerem w obrębie pasa).
 - Praktyczne pola seedowe:
-	- `beltIndex`: number — indeks pasa (opcjonalny, ale zalecany dla kontroli porządku),
-	- `count`: number — opcjonalna liczba asteroid do wygenerowania (nadpisuje `density`),
-	- `seed`: number — opcjonalny seed losowy, by generacja była deterministyczna.
+  - `beltIndex`: number — indeks pasa (opcjonalny, ale zalecany dla kontroli porządku),
+  - `count`: number — opcjonalna liczba asteroid do wygenerowania (nadpisuje `density`),
+  - `seed`: number — opcjonalny seed losowy, by generacja była deterministyczna.
 - Obliczanie wartości sortującej do renderu (`computedHeight`):
 
-	computedHeight = 7 + (beltIndex / 100) + (asteroidIndex / 1000)
+  computedHeight = 7 + (beltIndex / 100) + (asteroidIndex / 1000)
 
-	(np. pas `beltIndex=1` → baza 7.01; trzecia asteroida → 7.013).
+  (np. pas `beltIndex=1` → baza 7.01; trzecia asteroida → 7.013).
 
 - Dzięki temu można mieć wiele pasów blisko siebie; każdy pas ma odrębną część dziesiętną, a asteroidy w pasie mają drobniejszą separację.
 - Rekomendacja: w seedzie definiować `beltIndex` i `count`/`density`; loader wygeneruje indywidualne encje asteroidalne i przypisze `computedHeight` zgodnie z powyższą metodą.
+
+---- 
+Ten szkic jest wstępny — szczegóły implementacyjne (API seeda, format manifestu, implementacja grup asteroid) rozwinąć w następnych krokach.
 
 ## Dev Overlay — ręczne dodawanie i testowanie
 - Rozszerzyć panel deweloperski o prosty formularz do: wybierz `type`, `profileId` (autocomplete z `VisualProfileRegistry`), `orbitRadius`, `orbitPhase` (deg), `orbitAround` (select z istniejących obiektów), `height` i `spawn`.
@@ -202,7 +201,9 @@ Asteroidy — pasy i porządek zagnieżdżony
 	- utworzyć encję i `Renderable`,
 	- zarejestrować ją w `EntityManager`,
 	- dodać do `WorldLayer`.
-- Opcja dodatkowa: `Export to seed` — zapisać aktualny zestaw statycznych obiektów do pliku JSON (skopiuj do `public/world/systems/<systemId>.json`) albo do `localStorage` (wygodne do testów).
+Uwaga zakresu:
+- Etap 5: narzędzie pomocnicze do pracy na realnych obiektach w jednym systemie startowym.
+- Etap 5.5: doprecyzowanie docelowego API świata, wielosystemowości i kontraktów architektury.
 
 ----
 To uzupełnienie zachowuje dotychczasowe założenia (brak kolizji między obiektami, orbitPhase trwale zapisywane). Następne kroki: stworzyć prosty parser seeda (runtime loader), implementować walidację i narzędzie deweloperskie do eksportu/importu seeda.
