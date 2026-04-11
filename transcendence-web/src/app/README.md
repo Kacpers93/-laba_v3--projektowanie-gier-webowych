@@ -17,6 +17,10 @@ import { bootstrap } from './Bootstrap';
 void bootstrap();
 ```
 
+## Dokumentacja plikowa
+- Dokumentacja jest obok kodu: `Bootstrap.ts.md` oraz `AppShell.ts.md`.
+- Dla nowych plikow w tym folderze stosujemy ten sam schemat: `<nazwa_pliku_kodu>.md`.
+
 ## Czego NIE robi
 - Nie implementuje docelowej logiki obiektow swiata.
 - Nie definiuje assetow graficznych ani danych poziomow.

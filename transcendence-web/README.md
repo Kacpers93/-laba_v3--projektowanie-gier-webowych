@@ -21,6 +21,11 @@ npm install
 npm run dev
 ```
 
+## Dokumentacja plikowa
+- Opisy plikow kodu sa trzymane bezposrednio obok kodu jako osobne pliki z sufiksem `.md` (np. `src/app/AppShell.ts.md`).
+- Taka konwencja pozwala otworzyc kod i opis w tym samym folderze.
+- Duplikaty dokumentacji z `docs/transcendence-web/` zostaly usuniete.
+
 ## Czego NIE robi
 - Nie zawiera logiki rozgrywki bezposrednio (ta jest w `src`).
 - Nie przechowuje danych runtime ani stanu sesji.

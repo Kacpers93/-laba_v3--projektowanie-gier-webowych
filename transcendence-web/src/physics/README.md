@@ -19,6 +19,9 @@ const b = new Vec2(1, 2);
 const dist = a.distanceTo(b);
 ```
 
+## Dokumentacja plikowa
+- Opisy plikow fizyki sa obok kodu, np. `Vector2.ts.md` i `types.ts.md`.
+
 ## Czego NIE robi
 - Nie implementuje wykrywania kolizji ani integracji fizycznej.
 - Nie zarzadza encjami gry.

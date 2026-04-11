@@ -16,6 +16,10 @@ Podstawowe elementy silnika uruchamianego w przegladarce: dzwiek, input, petla c
 ## Jak uzywac
 Silnik jest skladany przez `AppShell`, np. utworzenie `GameLoop` i `Renderer` w konstruktorze shella.
 
+## Dokumentacja plikowa
+- Opisy plikow sa obok kodu jako `*.md` (np. `audio/AudioManager.ts.md`, `loop/GameLoop.ts.md`).
+- Przy dodawaniu nowego modulu silnika dodaj odpowiadajacy plik dokumentacji w tym samym folderze.
+
 ## Czego NIE robi
 - Nie zawiera warstw prezentacji sceny (to `src/presentation`).
 - Nie odpowiada za strukture HTML aplikacji.

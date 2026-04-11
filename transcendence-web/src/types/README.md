@@ -17,6 +17,9 @@ import type { Vector2 } from '@/types/common';
 import type { GameLoopConfig } from '@/types/engine';
 ```
 
+## Dokumentacja plikowa
+- Opisy typow sa trzymane lokalnie obok kodu: `common.ts.md` i `engine.ts.md`.
+
 ## Czego NIE robi
 - Nie implementuje logiki runtime.
 - Nie zawiera walidacji danych wejscia.
