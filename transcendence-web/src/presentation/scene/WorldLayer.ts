@@ -18,7 +18,7 @@ export class WorldLayer implements SceneLayer {
   }
 
   public update(_dt: number, _camera: Camera): void {
-    // Etap 3: miejsce na sorting lub przygotowanie danych pod culling.
+    this.renderables.sort((a, b) => a.computedHeight - b.computedHeight);
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera, alpha: number): void {

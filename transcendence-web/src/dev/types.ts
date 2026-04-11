@@ -25,4 +25,33 @@ export interface DevButtonControl {
   element?: HTMLElement;
 }
 
-export type DevControl = DevCheckboxControl | DevButtonControl;
+export interface DevSelectOption {
+  label: string;
+  value: string;
+}
+
+/** Kontrola interaktywna select. */
+export interface DevSelectControl {
+  id: string;
+  label: string;
+  type: 'select';
+  value: string;
+  options: DevSelectOption[];
+  onChange: (value: string) => void;
+  element?: HTMLElement;
+}
+
+/** Kontrola interaktywna number input. */
+export interface DevNumberControl {
+  id: string;
+  label: string;
+  type: 'number';
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+  element?: HTMLElement;
+}
+
+export type DevControl = DevCheckboxControl | DevButtonControl | DevSelectControl | DevNumberControl;

@@ -15,6 +15,7 @@ export interface Renderable {
   rotation: number;
   previousRotation: number;
   readonly cullRadius: number;
+  computedHeight: number;
   visible: boolean;
   render(ctx: CanvasRenderingContext2D, alpha: number): void;
 }

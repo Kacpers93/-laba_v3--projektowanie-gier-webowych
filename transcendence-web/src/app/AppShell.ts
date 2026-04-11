@@ -23,6 +23,9 @@ import { ParallaxLayer } from '@presentation/scene/ParallaxLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@presentation/scene/WorldLayer';
 import type { Renderable } from '@/types/engine';
+import { SystemSeedLoader, SEED_OBJECT_BASE_HEIGHT, SEED_TYPE_TO_CATEGORY, computeOrbitPosition } from '@world/seed';
+import type { SystemLoadResult, SeedObjectType } from '@world/seed';
+import { WorldEntity } from '@world/entities';
 
 const CAMERA_SPEED = 220;
 const DEV_OVERLAY_UPDATE_INTERVAL = 0.25;
@@ -36,6 +39,7 @@ type DevOverlayLike = {
   mount(parent: HTMLElement): void;
   unmount(): void;
   toggle(): void;
+  removeSection(id: string): void;
   registerSection(id: string, label: string): {
     registerMetric(id: string, label: string, getter: () => string | number): void;
     registerControl(
@@ -51,6 +55,22 @@ type DevOverlayLike = {
       type: 'checkbox',
       initialValue: boolean,
       onChange: (value: boolean) => void,
+    ): void;
+    registerControl(
+      id: string,
+      label: string,
+      type: 'select',
+      initialValue: string,
+      onChange: (value: string) => void,
+      options: Array<{ label: string; value: string }>,
+    ): void;
+    registerControl(
+      id: string,
+      label: string,
+      type: 'number',
+      initialValue: number,
+      onChange: (value: number) => void,
+      bounds?: { min?: number; max?: number; step?: number },
     ): void;
   };
   update(): void;
@@ -103,6 +123,7 @@ export class AppShell {
   public readonly entityManager: EntityManager;
   public readonly visualProfileRegistry: VisualProfileRegistry;
   public readonly renderableFactory: RenderableFactory;
+  private readonly systemSeedLoader: SystemSeedLoader;
   private readonly cache: OffscreenCache;
   private readonly assetLoader: AssetLoader;
   private readonly backgroundLayer: BackgroundLayer;
@@ -111,6 +132,15 @@ export class AppShell {
   private readonly renderablesByEntityId = new Map<string, Renderable>();
   private devOverlay?: DevOverlayLike;
   private activeSpriteTestProfileId: string | null = null;
+  private currentSystemId = '';
+  private lastLoadResult: SystemLoadResult | null = null;
+  private devSpawnType: SeedObjectType = 'station';
+  private devSpawnProfileId = '';
+  private devSpawnOrbitRadius = 300;
+  private devSpawnOrbitPhase = 0;
+  private devSpawnOrbitAroundId = 'center';
+  private devSpawnHeight = SEED_OBJECT_BASE_HEIGHT.station;
+  private devSpawnSequence = 0;
 
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
@@ -149,6 +179,7 @@ export class AppShell {
     this.visualProfileRegistry = new VisualProfileRegistry();
     this.assetLoader = new AssetLoader();
     this.renderableFactory = new RenderableFactory(this.cache, this.assetLoader);
+    this.registerSystemFallbackProfiles();
 
     this.sceneRenderer = new SceneRenderer();
 
@@ -173,83 +204,24 @@ export class AppShell {
     this.sceneRenderer.addLayer(this.worldLayer);
     this.sceneRenderer.addLayer(new EffectsLayer());
     this.sceneRenderer.addLayer(new DebugLayer());
+    this.systemSeedLoader = new SystemSeedLoader(
+      this.entityManager,
+      this.visualProfileRegistry,
+      this.renderableFactory,
+      this.worldLayer,
+      this.renderablesByEntityId,
+    );
 
     if (import.meta.env.DEV) {
       this.registerDevVisualProfiles();
-      this.setDevTestEntityEnabled(this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, true));
+      this.setDevTestEntityEnabled(this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, false));
       this.exposeDevTools();
 
       void import('@dev/DevOverlayPanel').then(({ DevOverlayPanel }) => {
         const overlay = new DevOverlayPanel();
         this.devOverlay = overlay;
         overlay.mount(document.body);
-
-        const entitiesSection = overlay.registerSection('entities', 'Entities');
-        entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
-
-        const categories = [
-          'ship',
-          'station',
-          'gate',
-          'wreck',
-          'projectile',
-          'celestial',
-          'environment',
-        ] as const;
-        categories.forEach((category) => {
-          entitiesSection.registerMetric(category, category, () => this.entityManager.getByCategory(category).length);
-        });
-
-        const renderSection = overlay.registerSection('render', 'Render');
-        renderSection.registerMetric('renderables', 'renderables', () => this.worldLayer.renderableCount);
-        renderSection.registerMetric('visible', 'visible', () => this.worldLayer.lastVisibleCount);
-        renderSection.registerMetric('culled', 'culled', () => this.worldLayer.lastCulledCount);
-
-        const cameraSection = overlay.registerSection('camera', 'Camera');
-        cameraSection.registerMetric('x', 'x', () => this.camera.position.x.toFixed(1));
-        cameraSection.registerMetric('y', 'y', () => this.camera.position.y.toFixed(1));
-        cameraSection.registerMetric('zoom', 'zoom', () => this.camera.zoom.toFixed(2));
-
-        const cacheSection = overlay.registerSection('cache', 'Cache');
-        cacheSection.registerMetric('used', 'used', () => {
-          const bytes = this.cache.entityCacheBytes;
-          const mb = bytes / (1024 * 1024);
-
-          if (mb < 0.1) {
-            return `${(bytes / 1024).toFixed(1)} KB`;
-          }
-
-          return `${mb.toFixed(1)} MB`;
-        });
-        cacheSection.registerMetric('limit', 'limit', () => `${(this.cache.entityCacheLimit / (1024 * 1024)).toFixed(0)} MB`);
-        cacheSection.registerMetric('percent', 'percent', () => `${this.cache.entityCachePercent.toFixed(1)}%`);
-        cacheSection.registerMetric('entries', 'entries', () => this.cache.size);
-
-        const assetsSection = overlay.registerSection('assets', 'Assets');
-        assetsSection.registerMetric('loaded', 'loaded', () => this.assetLoader.stats.loaded);
-        assetsSection.registerMetric('total', 'total', () => this.assetLoader.stats.total);
-        assetsSection.registerMetric('failed', 'failed', () => this.assetLoader.stats.failed);
-
-        const spriteTestSection = overlay.registerSection('sprite-test', 'Sprite Test');
-        spriteTestSection.registerMetric('active', 'active', () => this.activeSpriteTestProfileId ?? '-');
-        spriteTestSection.registerMetric('available', 'available', () => this.getSpriteProfileIds().length);
-        spriteTestSection.registerControl('spawn-next', 'Spawn next sprite', 'button', undefined, () => {
-          this.spawnNextSpriteTestEntity();
-        });
-        spriteTestSection.registerControl('clear-sprite-test', 'Clear sprite test', 'button', undefined, () => {
-          this.clearSpriteTestEntity();
-        });
-
-        const devFlagsSection = overlay.registerSection('dev-flags', 'Dev Flags');
-        devFlagsSection.registerControl(
-          'test-entity',
-          'Test entity',
-          'checkbox',
-          this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, true),
-          (enabled: boolean) => {
-            this.setDevTestEntityEnabled(enabled);
-          },
-        );
+        this.registerDevOverlaySections(overlay);
       });
 
       window.addEventListener('keydown', this.handleDevOverlayToggleKeydown);
@@ -281,6 +253,10 @@ export class AppShell {
       await this.assetLoader.preloadAll();
       registerManifestProfiles(manifest, this.visualProfileRegistry);
     }
+
+    this.lastLoadResult = await this.systemSeedLoader.loadSystem('/world/systems/sol-001.json');
+    this.currentSystemId = this.lastLoadResult.systemId;
+    this.refreshDevSpawnSection();
 
     this.canvas.focus();
     this.gameLoop.start();
@@ -411,6 +387,398 @@ export class AppShell {
 
   private getAudioState(): string {
     return 'running';
+  }
+
+  private registerSystemFallbackProfiles(): void {
+    const register = (profile: VisualProfile): void => {
+      if (this.visualProfileRegistry.has(profile.profileId)) {
+        return;
+      }
+
+      this.visualProfileRegistry.register(profile);
+    };
+
+    register({
+      profileId: 'star-yellow-large',
+      category: 'celestial',
+      size: { width: 220, height: 220 },
+      cullRadius: 160,
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = '#ffd166';
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.min(width, height) * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      },
+    });
+
+    register({
+      profileId: 'moon-small',
+      category: 'celestial',
+      size: { width: 72, height: 72 },
+      cullRadius: 52,
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = '#c5d1de';
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.min(width, height) * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      },
+    });
+
+    register({
+      profileId: 'cargo-container',
+      category: 'environment',
+      size: { width: 52, height: 36 },
+      cullRadius: 32,
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = '#f4a261';
+          ctx.fillRect(-width / 2, -height / 2, width, height);
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-width / 2, -height / 2, width, height);
+        },
+      },
+    });
+
+    register({
+      profileId: 'station-wreck-small',
+      category: 'wreck',
+      size: { width: 110, height: 80 },
+      cullRadius: 72,
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = '#ff8a65';
+          ctx.fillRect(-width / 2, -height / 2, width, height);
+          ctx.strokeStyle = '#1f2937';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-width / 2, -height / 2, width, height);
+        },
+      },
+    });
+
+    register({
+      profileId: 'ship-wreck-small',
+      category: 'wreck',
+      size: { width: 90, height: 56 },
+      cullRadius: 66,
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = '#d0a2f7';
+          ctx.fillRect(-width / 2, -height / 2, width, height);
+          ctx.strokeStyle = '#1f2937';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-width / 2, -height / 2, width, height);
+        },
+      },
+    });
+
+  }
+
+  private registerDevOverlaySections(overlay: DevOverlayLike): void {
+    const entitiesSection = overlay.registerSection('entities', 'Entities');
+    entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
+
+    const categories = ['ship', 'station', 'gate', 'wreck', 'projectile', 'celestial', 'environment'] as const;
+    categories.forEach((category) => {
+      entitiesSection.registerMetric(category, category, () => this.entityManager.getByCategory(category).length);
+    });
+
+    const renderSection = overlay.registerSection('render', 'Render');
+    renderSection.registerMetric('renderables', 'renderables', () => this.worldLayer.renderableCount);
+    renderSection.registerMetric('visible', 'visible', () => this.worldLayer.lastVisibleCount);
+    renderSection.registerMetric('culled', 'culled', () => this.worldLayer.lastCulledCount);
+
+    const cameraSection = overlay.registerSection('camera', 'Camera');
+    cameraSection.registerMetric('x', 'x', () => this.camera.position.x.toFixed(1));
+    cameraSection.registerMetric('y', 'y', () => this.camera.position.y.toFixed(1));
+    cameraSection.registerMetric('zoom', 'zoom', () => this.camera.zoom.toFixed(2));
+
+    const cacheSection = overlay.registerSection('cache', 'Cache');
+    cacheSection.registerMetric('used', 'used', () => {
+      const bytes = this.cache.entityCacheBytes;
+      const mb = bytes / (1024 * 1024);
+
+      if (mb < 0.1) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+      }
+
+      return `${mb.toFixed(1)} MB`;
+    });
+    cacheSection.registerMetric('limit', 'limit', () => `${(this.cache.entityCacheLimit / (1024 * 1024)).toFixed(0)} MB`);
+    cacheSection.registerMetric('percent', 'percent', () => `${this.cache.entityCachePercent.toFixed(1)}%`);
+    cacheSection.registerMetric('entries', 'entries', () => this.cache.size);
+
+    const assetsSection = overlay.registerSection('assets', 'Assets');
+    assetsSection.registerMetric('loaded', 'loaded', () => this.assetLoader.stats.loaded);
+    assetsSection.registerMetric('total', 'total', () => this.assetLoader.stats.total);
+    assetsSection.registerMetric('failed', 'failed', () => this.assetLoader.stats.failed);
+
+    const systemSection = overlay.registerSection('system', 'System');
+    systemSection.registerMetric('system', 'system', () => this.currentSystemId || '-');
+    systemSection.registerMetric('entities', 'entities', () => this.entityManager.size);
+    systemSection.registerMetric('asteroids', 'asteroids', () => this.getAsteroidCount());
+    systemSection.registerMetric('load-time', 'load time', () => {
+      if (!this.lastLoadResult) {
+        return '-';
+      }
+
+      return `${this.lastLoadResult.loadTimeMs.toFixed(1)} ms`;
+    });
+    systemSection.registerMetric('warnings', 'warnings', () => this.lastLoadResult?.warnings.length ?? 0);
+    systemSection.registerMetric('errors', 'errors', () => this.lastLoadResult?.errors.length ?? 0);
+
+    const spriteTestSection = overlay.registerSection('sprite-test', 'Sprite Test');
+    spriteTestSection.registerMetric('active', 'active', () => this.activeSpriteTestProfileId ?? '-');
+    spriteTestSection.registerMetric('available', 'available', () => this.getSpriteProfileIds().length);
+    spriteTestSection.registerControl('spawn-next', 'Spawn next sprite', 'button', undefined, () => {
+      this.spawnNextSpriteTestEntity();
+    });
+    spriteTestSection.registerControl('clear-sprite-test', 'Clear sprite test', 'button', undefined, () => {
+      this.clearSpriteTestEntity();
+    });
+
+    const devFlagsSection = overlay.registerSection('dev-flags', 'Dev Flags');
+    devFlagsSection.registerControl(
+      'test-entity',
+      'Test entity',
+      'checkbox',
+      this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, false),
+      (enabled: boolean) => {
+        this.setDevTestEntityEnabled(enabled);
+      },
+    );
+
+    this.refreshDevSpawnSection();
+  }
+
+  private refreshDevSpawnSection(): void {
+    if (!this.devOverlay) {
+      return;
+    }
+
+    this.devOverlay.removeSection('dev-spawn');
+
+    const availableProfiles = this.getDevSpawnProfiles(this.devSpawnType);
+    if (availableProfiles.length > 0 && !availableProfiles.some((profile) => profile.value === this.devSpawnProfileId)) {
+      this.devSpawnProfileId = availableProfiles[0].value;
+    }
+
+    if (availableProfiles.length === 0) {
+      this.devSpawnProfileId = '';
+    }
+
+    const orbitAroundOptions = this.getDevSpawnOrbitAroundOptions();
+    if (!orbitAroundOptions.some((option) => option.value === this.devSpawnOrbitAroundId)) {
+      this.devSpawnOrbitAroundId = 'center';
+    }
+
+    const section = this.devOverlay.registerSection('dev-spawn', 'Dev Spawn');
+    section.registerControl('type', 'type', 'select', this.devSpawnType, (value: string) => {
+      this.devSpawnType = value as SeedObjectType;
+      this.devSpawnHeight = SEED_OBJECT_BASE_HEIGHT[this.devSpawnType];
+      const nextProfiles = this.getDevSpawnProfiles(this.devSpawnType);
+      this.devSpawnProfileId = nextProfiles[0]?.value ?? '';
+      this.refreshDevSpawnSection();
+    }, this.getDevSpawnTypeOptions());
+    section.registerControl('profileId', 'profileId', 'select', this.devSpawnProfileId, (value: string) => {
+      this.devSpawnProfileId = value;
+    }, availableProfiles);
+    section.registerControl('orbitRadius', 'orbitRadius', 'number', this.devSpawnOrbitRadius, (value: number) => {
+      this.devSpawnOrbitRadius = value;
+    }, { min: 0, step: 10 });
+    section.registerControl('orbitPhase', 'orbitPhase', 'number', this.devSpawnOrbitPhase, (value: number) => {
+      this.devSpawnOrbitPhase = value;
+    }, { min: 0, max: 360, step: 1 });
+    section.registerControl('orbitAround', 'orbitAround', 'select', this.devSpawnOrbitAroundId, (value: string) => {
+      this.devSpawnOrbitAroundId = value;
+    }, orbitAroundOptions);
+    section.registerControl('height', 'height', 'number', this.devSpawnHeight, (value: number) => {
+      this.devSpawnHeight = value;
+    }, { min: 1, step: 0.1 });
+    section.registerControl('spawn', 'Spawn', 'button', undefined, () => {
+      this.spawnDevEntity();
+    });
+  }
+
+  private getDevSpawnTypeOptions(): Array<{ label: string; value: string }> {
+    return [
+      { label: 'star', value: 'star' },
+      { label: 'planet', value: 'planet' },
+      { label: 'moon', value: 'moon' },
+      { label: 'gate', value: 'gate' },
+      { label: 'station-wreck', value: 'station-wreck' },
+      { label: 'station', value: 'station' },
+      { label: 'container', value: 'container' },
+      { label: 'ship-wreck', value: 'ship-wreck' },
+      { label: 'npc-ship', value: 'npc-ship' },
+      { label: 'player-ship', value: 'player-ship' },
+    ];
+  }
+
+  private getDevSpawnProfiles(type: SeedObjectType): Array<{ label: string; value: string }> {
+    const category = SEED_TYPE_TO_CATEGORY[type];
+    return this.visualProfileRegistry
+      .getAll()
+      .filter((profile) => profile.category === category)
+      .map((profile) => ({ label: profile.profileId, value: profile.profileId }));
+  }
+
+  private getDevSpawnOrbitAroundOptions(): Array<{ label: string; value: string }> {
+    return [
+      { label: 'center', value: 'center' },
+      ...this.entityManager.getAll().map((entity) => ({ label: entity.id, value: entity.id })),
+    ];
+  }
+
+  private getAsteroidCount(): number {
+    return this.entityManager.getAll().filter((entity) => {
+      const candidate = entity as GameEntity & { seedType?: string };
+      return candidate.seedType === 'asteroid';
+    }).length;
+  }
+
+  private spawnDevEntity(): void {
+    const profile = this.resolveDevSpawnProfile();
+    const parentPosition = this.getDevSpawnParentPosition();
+    const position = computeOrbitPosition(parentPosition, this.devSpawnOrbitRadius, this.devSpawnOrbitPhase);
+    const height = this.normalizeDevSpawnHeight(this.devSpawnType, this.devSpawnHeight);
+    const computedHeight = height;
+    const entityId = this.getNextDevSpawnEntityId();
+    const isStatic = this.devSpawnType !== 'npc-ship' && this.devSpawnType !== 'player-ship';
+
+    const entity = new WorldEntity({
+      id: entityId,
+      category: SEED_TYPE_TO_CATEGORY[this.devSpawnType],
+      seedType: this.devSpawnType,
+      position,
+      width: profile.size.width,
+      height: profile.size.height,
+      computedHeight,
+      isStatic,
+      profileId: profile.profileId,
+    });
+
+    this.entityManager.add(entity);
+    const renderable = this.renderableFactory.create(entity, profile);
+    renderable.computedHeight = computedHeight;
+    this.renderablesByEntityId.set(entity.id, renderable);
+    this.worldLayer.addRenderable(renderable);
+    this.refreshDevSpawnSection();
+  }
+
+  private resolveDevSpawnProfile(): VisualProfile {
+    const fallbackType = this.devSpawnType;
+    const category = SEED_TYPE_TO_CATEGORY[fallbackType];
+    const profile = this.visualProfileRegistry.get(this.devSpawnProfileId);
+    if (profile && profile.category === category) {
+      return profile;
+    }
+
+    const fallbackProfileId = `dev-fallback-${fallbackType}`;
+    if (!profile) {
+      console.warn(`[AppShell] Missing profile for dev spawn: ${this.devSpawnProfileId}, using fallback.`);
+    } else {
+      console.warn(`[AppShell] Profile category mismatch for dev spawn: ${this.devSpawnProfileId}, using fallback.`);
+    }
+
+    return {
+      profileId: fallbackProfileId,
+      category,
+      size: this.getDevSpawnFallbackSize(fallbackType),
+      cullRadius: this.getDevSpawnFallbackCullRadius(fallbackType),
+      source: {
+        type: 'procedural',
+        drawFn: (ctx, width, height) => {
+          ctx.fillStyle = this.getDevSpawnFallbackColor(fallbackType);
+          ctx.fillRect(-width / 2, -height / 2, width, height);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = '10px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fallbackType, 0, 0);
+        },
+      },
+    };
+  }
+
+  private getDevSpawnFallbackSize(type: SeedObjectType): { width: number; height: number } {
+    const sizes: Record<SeedObjectType, { width: number; height: number }> = {
+      star: { width: 220, height: 220 },
+      planet: { width: 140, height: 140 },
+      moon: { width: 72, height: 72 },
+      gate: { width: 100, height: 100 },
+      'station-wreck': { width: 110, height: 80 },
+      station: { width: 110, height: 90 },
+      container: { width: 52, height: 36 },
+      'ship-wreck': { width: 90, height: 56 },
+      'npc-ship': { width: 48, height: 30 },
+      'player-ship': { width: 48, height: 30 },
+    };
+
+    return sizes[type];
+  }
+
+  private getDevSpawnFallbackCullRadius(type: SeedObjectType): number {
+    const size = this.getDevSpawnFallbackSize(type);
+    return Math.max(size.width, size.height) / 2;
+  }
+
+  private getDevSpawnFallbackColor(type: SeedObjectType): string {
+    const colors: Record<SeedObjectType, string> = {
+      star: '#ffd166',
+      planet: '#6ec6ff',
+      moon: '#c5d1de',
+      gate: '#f8b195',
+      'station-wreck': '#ff8a65',
+      station: '#8ed081',
+      container: '#f4a261',
+      'ship-wreck': '#d0a2f7',
+      'npc-ship': '#4cc9f0',
+      'player-ship': '#2ec4b6',
+    };
+
+    return colors[type];
+  }
+
+  private getDevSpawnParentPosition(): { x: number; y: number } {
+    if (this.devSpawnOrbitAroundId === 'center') {
+      return { x: 0, y: 0 };
+    }
+
+    const parent = this.entityManager.get(this.devSpawnOrbitAroundId);
+    if (!parent) {
+      console.warn(`[AppShell] Missing orbitAround entity: ${this.devSpawnOrbitAroundId}, falling back to center.`);
+      return { x: 0, y: 0 };
+    }
+
+    return { ...parent.position };
+  }
+
+  private getNextDevSpawnEntityId(): string {
+    let nextId = `dev-spawn-${this.devSpawnSequence += 1}`;
+    while (this.entityManager.has(nextId)) {
+      nextId = `dev-spawn-${this.devSpawnSequence += 1}`;
+    }
+
+    return nextId;
+  }
+
+  private normalizeDevSpawnHeight(type: SeedObjectType, value: number): number {
+    const baseHeight = SEED_OBJECT_BASE_HEIGHT[type];
+    if (type === 'player-ship' && value < SEED_OBJECT_BASE_HEIGHT['player-ship']) {
+      return SEED_OBJECT_BASE_HEIGHT['player-ship'];
+    }
+
+    return value > 0 ? value : baseHeight;
   }
 
   private registerDevVisualProfiles(): void {

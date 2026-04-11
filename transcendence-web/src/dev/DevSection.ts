@@ -1,4 +1,4 @@
-import type { DevControl, DevMetric } from './types';
+import type { DevControl, DevMetric, DevSelectOption } from './types';
 
 /**
  * Sekcja panelu debug - grupa powiazanych metryk.
@@ -64,9 +64,26 @@ export class DevSection {
   public registerControl(
     id: string,
     label: string,
-    type: 'checkbox' | 'button',
-    initialValue: boolean | undefined,
-    onChange: ((value: boolean) => void) | (() => void),
+    type: 'select',
+    initialValue: string,
+    onChange: (value: string) => void,
+    options: DevSelectOption[],
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'number',
+    initialValue: number,
+    onChange: (value: number) => void,
+    bounds?: { min?: number; max?: number; step?: number },
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'checkbox' | 'button' | 'select' | 'number',
+    initialValue: boolean | number | string | undefined,
+    onChange: ((value: boolean) => void) | ((value: string) => void) | ((value: number) => void) | (() => void),
+    optionsOrBounds?: DevSelectOption[] | { min?: number; max?: number; step?: number },
   ): void {
     if (type === 'checkbox') {
       const checkboxOnChange = onChange as (value: boolean) => void;
@@ -74,17 +91,42 @@ export class DevSection {
         id,
         label,
         type,
-        value: initialValue ?? false,
+        value: typeof initialValue === 'boolean' ? initialValue : false,
         onChange: checkboxOnChange,
       });
     } else {
       const buttonOnClick = onChange as () => void;
-      this.controls.set(id, {
-        id,
-        label,
-        type,
-        onClick: buttonOnClick,
-      });
+      if (type === 'button') {
+        this.controls.set(id, {
+          id,
+          label,
+          type,
+          onClick: buttonOnClick,
+        });
+      } else if (type === 'select') {
+        const selectOnChange = onChange as (value: string) => void;
+        this.controls.set(id, {
+          id,
+          label,
+          type,
+          value: typeof initialValue === 'string' ? initialValue : '',
+          options: Array.isArray(optionsOrBounds) ? optionsOrBounds : [],
+          onChange: selectOnChange,
+        });
+      } else {
+        const numberOnChange = onChange as (value: number) => void;
+        const bounds = !Array.isArray(optionsOrBounds) ? optionsOrBounds : undefined;
+        this.controls.set(id, {
+          id,
+          label,
+          type,
+          value: typeof initialValue === 'number' ? initialValue : 0,
+          min: bounds?.min,
+          max: bounds?.max,
+          step: bounds?.step,
+          onChange: numberOnChange,
+        });
+      }
     }
 
     if (this.containerElement) {
@@ -174,6 +216,65 @@ export class DevSection {
         control.element = checkboxLabel;
         body.append(checkboxLabel);
       } else {
+        if (control.type === 'select') {
+          const selectLabel = document.createElement('label');
+          selectLabel.className = 'dev-overlay__select';
+
+          const text = document.createElement('span');
+          text.textContent = control.label;
+
+          const select = document.createElement('select');
+          select.value = control.value;
+          control.options.forEach((option) => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            select.append(optionElement);
+          });
+          select.addEventListener('change', () => {
+            control.value = select.value;
+            control.onChange(control.value);
+          });
+
+          selectLabel.append(text, select);
+          control.element = selectLabel;
+          body.append(selectLabel);
+          return;
+        }
+
+        if (control.type === 'number') {
+          const numberLabel = document.createElement('label');
+          numberLabel.className = 'dev-overlay__number';
+
+          const text = document.createElement('span');
+          text.textContent = control.label;
+
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.value = String(control.value);
+          if (control.min !== undefined) {
+            input.min = String(control.min);
+          }
+          if (control.max !== undefined) {
+            input.max = String(control.max);
+          }
+          if (control.step !== undefined) {
+            input.step = String(control.step);
+          }
+          input.addEventListener('change', () => {
+            const parsed = Number(input.value);
+            if (Number.isFinite(parsed)) {
+              control.value = parsed;
+              control.onChange(control.value);
+            }
+          });
+
+          numberLabel.append(text, input);
+          control.element = numberLabel;
+          body.append(numberLabel);
+          return;
+        }
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'dev-overlay__button';

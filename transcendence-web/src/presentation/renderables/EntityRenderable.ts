@@ -14,6 +14,7 @@ export class EntityRenderable implements Renderable {
   public rotation = 0;
   public previousRotation = 0;
   public readonly cullRadius: number;
+  public computedHeight = 0;
   public visible = true;
 
   public constructor(
@@ -45,11 +46,13 @@ export class EntityRenderable implements Renderable {
     previousPosition: Vector2;
     rotation: number;
     previousRotation: number;
+    computedHeight?: number;
   }): void {
     this.position = { ...entity.position };
     this.previousPosition = { ...entity.previousPosition };
     this.rotation = entity.rotation;
     this.previousRotation = entity.previousRotation;
+    this.computedHeight = entity.computedHeight ?? 0;
   }
 
   /** Rysuje obiekt — deleguje do profilu. */
