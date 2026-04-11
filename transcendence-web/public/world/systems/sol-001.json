@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "systemId": "sol-001",
+  "name": "Sol Starter",
+  "center": { "x": 0, "y": 0 },
+  "informationalBoundaryRadius": 1900,
+  "maxBoundaryRadius": 2400,
+  "objects": [
+    {
+      "id": "star-sol",
+      "type": "star",
+      "profileId": "planet-terran",
+      "orbitRadius": 0,
+      "orbitPhase": 0,
+      "orbitAround": null,
+      "static": true,
+      "height": 1
+    },
+    {
+      "id": "planet-aurelia",
+      "type": "planet",
+      "profileId": "planet-terran",
+      "orbitRadius": 520,
+      "orbitPhase": 36,
+      "orbitAround": "star-sol",
+      "static": true,
+      "height": 2
+    },
+    {
+      "id": "moon-aurelia-1",
+      "type": "moon",
+      "profileId": "asteroid-rocky",
+      "orbitRadius": 120,
+      "orbitPhase": 211,
+      "orbitAround": "planet-aurelia",
+      "static": true,
+      "height": 3
+    },
+    {
+      "id": "gate-west",
+      "type": "gate",
+      "profileId": "stargate-standard",
+      "orbitRadius": 1420,
+      "orbitPhase": 180,
+      "orbitAround": "star-sol",
+      "static": true,
+      "height": 4
+    },
+    {
+      "id": "station-wreck-01",
+      "type": "station-wreck",
+      "profileId": "mining-platform",
+      "orbitRadius": 910,
+      "orbitPhase": 248,
+      "orbitAround": "star-sol",
+      "static": true,
+      "height": 5
+    },
+    {
+      "id": "station-alpha",
+      "type": "station",
+      "profileId": "trading-outpost",
+      "orbitRadius": 760,
+      "orbitPhase": 322,
+      "orbitAround": "star-sol",
+      "static": true,
+      "height": 6
+    },
+    {
+      "id": "container-01",
+      "type": "container",
+      "profileId": "asteroid-rocky",
+      "orbitRadius": 82,
+      "orbitPhase": 96,
+      "orbitAround": "station-alpha",
+      "static": true,
+      "height": 8
+    },
+    {
+      "id": "ship-wreck-01",
+      "type": "ship-wreck",
+      "profileId": "scout-mk1",
+      "orbitRadius": 110,
+      "orbitPhase": 214,
+      "orbitAround": "station-alpha",
+      "static": true,
+      "height": 9
+    },
+    {
+      "id": "npc-ship-01",
+      "type": "npc-ship",
+      "profileId": "scout-mk1",
+      "orbitRadius": 880,
+      "orbitPhase": 18,
+      "orbitAround": "star-sol",
+      "static": false,
+      "height": 10
+    },
+    {
+      "id": "player-ship-01",
+      "type": "player-ship",
+      "profileId": "freighter-standard",
+      "orbitRadius": 940,
+      "orbitPhase": 28,
+      "orbitAround": "star-sol",
+      "static": false,
+      "height": 11
+    }
+  ],
+  "asteroidGroups": [
+    {
+      "id": "belt-inner",
+      "orbitRadius": 1100,
+      "orbitPhase": 140,
+      "orbitAround": "star-sol",
+      "length": 900,
+      "width": 180,
+      "density": 0.03,
+      "height": 7,
+      "beltIndex": 1,
+      "profileId": "asteroid-rocky",
+      "seed": 4012
+    },
+    {
+      "id": "belt-outer",
+      "orbitRadius": 1600,
+      "orbitPhase": 42,
+      "orbitAround": "star-sol",
+      "length": 1200,
+      "width": 240,
+      "count": 34,
+      "height": 7,
+      "beltIndex": 2,
+      "profileId": "asteroid-rocky",
+      "seed": 9271
+    }
+  ]
+}

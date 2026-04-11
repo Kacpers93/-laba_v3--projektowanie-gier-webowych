@@ -1,4 +1,4 @@
-import type { DevControl, DevMetric } from './types';
+import type { DevControl, DevMetric, DevSelectOption } from './types';
 
 /**
  * Sekcja panelu debug - grupa powiazanych metryk.
@@ -64,9 +64,26 @@ export class DevSection {
   public registerControl(
     id: string,
     label: string,
-    type: 'checkbox' | 'button',
-    initialValue: boolean | undefined,
-    onChange: ((value: boolean) => void) | (() => void),
+    type: 'number',
+    initialValue: number,
+    onChange: (value: number) => void,
+    options?: { min?: number; max?: number; step?: number },
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'select',
+    initialValue: string,
+    onChange: (value: string) => void,
+    options: { options: DevSelectOption[] },
+  ): void;
+  public registerControl(
+    id: string,
+    label: string,
+    type: 'checkbox' | 'button' | 'number' | 'select',
+    initialValue: boolean | number | string | undefined,
+    onChange: ((value: boolean) => void) | (() => void) | ((value: number) => void) | ((value: string) => void),
+    options?: { min?: number; max?: number; step?: number } | { options: DevSelectOption[] },
   ): void {
     if (type === 'checkbox') {
       const checkboxOnChange = onChange as (value: boolean) => void;
@@ -74,16 +91,40 @@ export class DevSection {
         id,
         label,
         type,
-        value: initialValue ?? false,
+        value: typeof initialValue === 'boolean' ? initialValue : false,
         onChange: checkboxOnChange,
       });
-    } else {
+    } else if (type === 'button') {
       const buttonOnClick = onChange as () => void;
       this.controls.set(id, {
         id,
         label,
         type,
         onClick: buttonOnClick,
+      });
+    } else if (type === 'number') {
+      const numberOnChange = onChange as (value: number) => void;
+      const numberOptions = (options as { min?: number; max?: number; step?: number } | undefined) ?? {};
+      this.controls.set(id, {
+        id,
+        label,
+        type,
+        value: typeof initialValue === 'number' ? initialValue : 0,
+        min: numberOptions.min,
+        max: numberOptions.max,
+        step: numberOptions.step,
+        onChange: numberOnChange,
+      });
+    } else {
+      const selectOnChange = onChange as (value: string) => void;
+      const selectOptions = (options as { options: DevSelectOption[] } | undefined)?.options ?? [];
+      this.controls.set(id, {
+        id,
+        label,
+        type,
+        value: typeof initialValue === 'string' ? initialValue : '',
+        options: selectOptions,
+        onChange: selectOnChange,
       });
     }
 
@@ -173,7 +214,7 @@ export class DevSection {
         checkboxLabel.append(input, text);
         control.element = checkboxLabel;
         body.append(checkboxLabel);
-      } else {
+      } else if (control.type === 'button') {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'dev-overlay__button';
@@ -184,6 +225,73 @@ export class DevSection {
 
         control.element = button;
         body.append(button);
+      } else if (control.type === 'number') {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'dev-overlay__field';
+
+        const fieldLabel = document.createElement('span');
+        fieldLabel.className = 'dev-overlay__field-label';
+        fieldLabel.textContent = control.label;
+
+        const input = document.createElement('input');
+        input.className = 'dev-overlay__input';
+        input.type = 'number';
+        input.value = String(control.value);
+        if (typeof control.min === 'number') {
+          input.min = String(control.min);
+        }
+        if (typeof control.max === 'number') {
+          input.max = String(control.max);
+        }
+        if (typeof control.step === 'number') {
+          input.step = String(control.step);
+        }
+
+        input.addEventListener('change', () => {
+          const nextValue = Number(input.value);
+          if (!Number.isFinite(nextValue)) {
+            input.value = String(control.value);
+            return;
+          }
+
+          control.value = nextValue;
+          control.onChange(nextValue);
+        });
+
+        wrapper.append(fieldLabel, input);
+        control.element = wrapper;
+        body.append(wrapper);
+      } else {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'dev-overlay__field';
+
+        const fieldLabel = document.createElement('span');
+        fieldLabel.className = 'dev-overlay__field-label';
+        fieldLabel.textContent = control.label;
+
+        const select = document.createElement('select');
+        select.className = 'dev-overlay__select';
+
+        control.options.forEach((option) => {
+          const optionElement = document.createElement('option');
+          optionElement.value = option.value;
+          optionElement.textContent = option.label;
+          select.append(optionElement);
+        });
+
+        if (!control.options.some((option) => option.value === control.value)) {
+          control.value = control.options[0]?.value ?? '';
+        }
+        select.value = control.value;
+
+        select.addEventListener('change', () => {
+          control.value = select.value;
+          control.onChange(select.value);
+        });
+
+        wrapper.append(fieldLabel, select);
+        control.element = wrapper;
+        body.append(wrapper);
       }
     });
 

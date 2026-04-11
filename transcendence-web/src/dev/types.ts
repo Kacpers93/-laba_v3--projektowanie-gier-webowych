@@ -6,6 +6,11 @@ export interface DevMetric {
   element?: HTMLElement;
 }
 
+export interface DevSelectOption {
+  value: string;
+  label: string;
+}
+
 /** Kontrola interaktywna checkbox. */
 export interface DevCheckboxControl {
   id: string;
@@ -25,4 +30,28 @@ export interface DevButtonControl {
   element?: HTMLElement;
 }
 
-export type DevControl = DevCheckboxControl | DevButtonControl;
+/** Kontrola interaktywna number input. */
+export interface DevNumberControl {
+  id: string;
+  label: string;
+  type: 'number';
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+  element?: HTMLElement;
+}
+
+/** Kontrola interaktywna select. */
+export interface DevSelectControl {
+  id: string;
+  label: string;
+  type: 'select';
+  value: string;
+  options: DevSelectOption[];
+  onChange: (value: string) => void;
+  element?: HTMLElement;
+}
+
+export type DevControl = DevCheckboxControl | DevButtonControl | DevNumberControl | DevSelectControl;

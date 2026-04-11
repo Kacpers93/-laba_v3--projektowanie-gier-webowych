@@ -15,6 +15,8 @@ export interface Renderable {
   rotation: number;
   previousRotation: number;
   readonly cullRadius: number;
+  /** Porzadek rysowania - mniejszy = rysowany wczesniej (pod spodem). */
+  computedHeight: number;
   visible: boolean;
   render(ctx: CanvasRenderingContext2D, alpha: number): void;
 }

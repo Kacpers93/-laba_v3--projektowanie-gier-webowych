@@ -14,6 +14,7 @@ export class EntityRenderable implements Renderable {
   public rotation = 0;
   public previousRotation = 0;
   public readonly cullRadius: number;
+  public computedHeight: number;
   public visible = true;
 
   public constructor(
@@ -21,10 +22,12 @@ export class EntityRenderable implements Renderable {
     private readonly profile: VisualProfile,
     private readonly cache: OffscreenCache,
     private readonly assetLoader?: AssetLoader,
+    computedHeight: number = 0,
   ) {
     this.position = { x: 0, y: 0 };
     this.previousPosition = { x: 0, y: 0 };
     this.cullRadius = profile.cullRadius;
+    this.computedHeight = computedHeight;
   }
 
   /** Interpoluje pozycje i rotacje. */
@@ -45,11 +48,15 @@ export class EntityRenderable implements Renderable {
     previousPosition: Vector2;
     rotation: number;
     previousRotation: number;
+    computedHeight?: number;
   }): void {
     this.position = { ...entity.position };
     this.previousPosition = { ...entity.previousPosition };
     this.rotation = entity.rotation;
     this.previousRotation = entity.previousRotation;
+    if (typeof entity.computedHeight === 'number') {
+      this.computedHeight = entity.computedHeight;
+    }
   }
 
   /** Rysuje obiekt — deleguje do profilu. */
