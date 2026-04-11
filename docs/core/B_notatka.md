@@ -1,59 +1,210 @@
-Ten plik nie wchodzi do dokumentacji ma byc usuniety przez uzytkownika po rozwiazaniu problemow
+# B — Wstępny zarys Etapu 5
 
+## Cel
+- Wdrożenie podstawowego szkieletu świata dla jednego systemu: osadzenie bytów (słońce, planety, księżyce, wrota, wraki stacji, stacje, asteroidy, kontenery, wraki statków, statki NPC, statek gracza) w sposób oparty na danych.
+- Zastąpienie bytu testowego rzeczywistym ładowaniem seeda systemu i rejestracją bytów w `EntityManager` oraz `WorldLayer`.
 
-plik etap 4 niespojny, a takze hmm srednio wykonany (byl robiony przez gpt5.4 mini)
+## Parametry wejściowe
+- `systemSeed`: lista definicji obiektów (id, type, profileId, orbitRadius [px], parentId?, orbitPhase?).
+- Visual profiles i assety (Etap 4).
+- Runtime: `EntityManager`, `RenderableFactory`, `WorldLayer`.
 
+## Parametry wyjściowe
+- Zainstancjonowane encje zarejestrowane w `EntityManager` i powiązane renderowalnymi obiektami w `WorldLayer`.
+- Utrwalony `systemSeed` z wyznaczonymi fazami orbit (deterministyczne pozycje).
+- Metryki deweloperskie: liczba bytów, liczba renderowalnych, rozkład po kategoriach.
 
-mysle ze tak
-    - zrobic nowego brancha
-    - cofnac sie
-    - dodac znowu dokumentacje (bo nie zrobilem commita)
-    - poprawic spojnosc dokumentacji
-        mozna zostawic notatke z małym oknem do dev aby sprawdzac asety
-    - dodac plik `06_etap4-asset-generation-prompt.md` 
-        jest to prompt jak robic asety
-    - dodac obecne asety w odpowiednie miejsce
-    - odpalic codexa 5.3 zeby zrobil to poprawnie 
+## Zachowanie brzegowe
+- Brak kolizji między obiektami; nachodzenie jest dozwolone.
+- Kwestia z-order: obiekty z tym samym `height` otrzymują deterministyczne, minimalne przesunięcie porządku (np. inkrementacja), tak aby uniknąć z-flicha.
+- Orbity mierzone w pikselach; `orbitPhase` wybierana losowo podczas generacji systemu i utrzymywana przy zapisie systemu.
+- Obiekty orbitują względem `parentId` (pozycja = parent.position + offset na orbicie).
+- Grupy asteroid reprezentowane jako elipsoidalny pas wokół orbity: `center`, `length`, `width`, `density`.
+- Brak profilu wizualnego → fallback proceduralny + log warning.
+- Duplikat `id` → odrzucenie wpisu i log error.
+- Obiekty poza granicami systemu: statyczne pomijane z ostrzeżeniem; dynamiczne tworzone jako nieaktywne.
+- Kolizje projektyli z obiektami planowane na późniejszy etap.
 
+## Typy obiektów i numeracja porządkowa
+- Wprowadzamy bazową numerację porządku rysowania (wartości całkowite 1..11) odpowiadającą głównym kategoriom obiektów:
+	- `1` — słońce (sun)
+	- `2` — planety (planet)
+	- `3` — księżyce (moon)
+	- `4` — wrota (gate)
+	- `5` — stacje (station)
+	- `6` — wraki stacji (station-wreck)
+	- `7` — asteroidy (asteroid)
+	- `8` — kontenery z ładunkami (container)
+	- `9` — wraki statków (ship-wreck)
+	- `10` — statki NPC (npc-ship)
+	- `11` — statek gracza (player-ship) — zawsze najwyżej (bazowa wartość 11)
 
-feedback:
+- Reguła dla wielu instancji tej samej kategorii: dopuszczamy część ułamkową (np. `2.1`, `2.2`, `2.3`) — część całkowita oznacza typ, część po przecinku to porządkowy indeks instancji. Wyższa wartość = rysowane 'nad' niższych wartości.
+- Przykład: pierwsza planeta → `height: 2.1`, druga → `height: 2.2`, trzecia → `height: 2.3`.
+- Asteroidy i grupy asteroid używają wartości typu `7` (+ ułamek dla poszczególnych sztuk). W `asteroidGroups` można podać `height: 7` jako domyślny porządek pasa, a poszczególne asteroidy wewnątrz grupy otrzymują `7.1`, `7.2` itd.
+- Validator seeda powinien wymusić, że `player-ship` ma `height >= 11` lub nadpisać wartość na `11` przy wczytywaniu seeda.
 
-    Ocena etapu 4: ⚠️ częściowy
+---- 
+Ten szkic jest wstępny — szczegóły implementacyjne (API seeda, format manifestu, implementacja grup asteroid) rozwinąć w następnych krokach.
 
-    Najważniejsze rozbieżności (od najwyższego wpływu)
+## Granica systemu
+- `informationalBoundaryRadius` (px): promień od centrum systemu używany w celach informacyjnych — UI może go rysować jako granicę pomocniczą.
+- `maxBoundaryRadius` (px): maksymalna odległość od centrum, powyżej której obiekty są traktowane jako poza granicą systemu (obecnie tylko informacyjne; w przyszłości można dodać mechanikę zdarzeń przy przekroczeniu).
+- `center`: punkt referencyjny systemu (domyślnie { x: 0, y: 0 }). Wszystkie `orbitRadius` liczone są względem tego punktu albo względem `parentId` (jeśli obiekt orbituje wokół innego obiektu).
+- Zachowanie: na tym etapie granice są informacyjne. Przy weryfikacji seeda obiekty statyczne poza `maxBoundaryRadius` należy odrzucić z ostrzeżeniem; obiekty dynamiczne można utworzyć jako nieaktywne.
 
-    1. ⚠️ Dokumentacja jest wewnętrznie niespójna w temacie duplikatów assetId/profileId, a implementacja wybrała jeden z wariantów.
-    - W dokumencie masz wariant „duplikat profileId powoduje błąd” w 10_etap4-specyfikacja.md.
-    - W tej samej specyfikacji masz też wariant „duplikat assetId pomijamy z ostrzeżeniem” w 10_etap4-specyfikacja.md.
-    - Kod realizuje wariant „pomijaj”: validateManifest.ts, registerManifestProfiles.ts.
-    - Rejestr nadal umie rzucić wyjątek przy duplikacie: VisualProfileRegistry.ts.
-    - Feedback: doprecyzować spec na jeden, docelowy kontrakt.
+## Proponowany format pliku seeda systemu
+Cel: łatwy do edycji, czytelny format (JSON lub YAML). Pliki umieścić w `public/world/systems/<systemId>.json` (dostępne runtime) i opcjonalnie w `docs/world/seeds/<systemId>.yaml` jako źródło autorskie.
 
-    2. ⚠️ Część kryteriów odbioru jest niepotwierdzona w tym audycie.
-    - Kryteria typu „konsola czysta w dev” są w 10_etap4-specyfikacja.md i 10_etap4-specyfikacja.md.  
-    - Brak informacji: nie uruchamiałem teraz sesji runtime npm run dev z ręczną obserwacją konsoli i panelu.
-    - Kryteria wizualne PNG (orientacja, antyaliasing, centrowanie) są w 10_etap4-specyfikacja.md, 10_etap4-specyfikacja.md, 10_etap4-specyfikacja.md.  
-    - Brak informacji: tych cech nie da się wiarygodnie potwierdzić samym statycznym odczytem kodu.
+Przykład (JSON):
 
-    3. ℹ️ W kodzie/artefaktach jest dodatkowy plik nieopisany w specyfikacji artefaktów.
-    - Obecny: .DS_Store oraz po buildzie .DS_Store.
-    - W tabeli artefaktów specyfikacja wymienia zamknięty zestaw plików od 10_etap4-specyfikacja.md.  
-    - Feedback: warto dodać do .gitignore i usunąć z public/dist.
+{
+	"systemId": "sol-001",
+	"name": "Sol",
+	"center": { "x": 0, "y": 0 },
+	"informationalBoundaryRadius": 1200,
+	"maxBoundaryRadius": 2500,
+	"objects": [
+		{
+			"id": "sun-1",
+			"type": "star",
+			"profileId": "star-yellow-large",
+			"orbitRadius": 0,
+			"orbitPhase": 0,
+			"orbitAround": null,
+			"static": true,
+			"height": 1
+		},
+		{
+			"id": "planet-1",
+			"type": "planet",
+			"profileId": "planet-terra",
+			"orbitRadius": 300,
+			"orbitPhase": 123.4, // stopnie 0..360, ustalone przy generacji
+			"orbitAround": "sun-1",
+			"static": true,
+			"height": 2.1
+		},
+		{
+			"id": "planet-2",
+			"type": "planet",
+			"profileId": "planet-barren",
+			"orbitRadius": 420,
+			"orbitPhase": 210,
+			"orbitAround": "sun-1",
+			"static": true,
+			"height": 2.2
+		},
+		{
+			"id": "moon-1",
+			"type": "moon",
+			"profileId": "moon-small",
+			"orbitRadius": 50,
+			"orbitPhase": 30,
+			"orbitAround": "planet-1",
+			"static": true,
+			"height": 3.1
+		},
+		{
+			"id": "station-1",
+			"type": "station",
+			"profileId": "trading-outpost",
+			"orbitRadius": 520,
+			"orbitPhase": 200,
+			"orbitAround": "sun-1",
+			"static": true,
+			"height": 5.1
+		},
+		{
+			"id": "container-1",
+			"type": "container",
+			"profileId": "cargo-container",
+			"orbitRadius": 850,
+			"orbitPhase": 215,
+			"orbitAround": "sun-1",
+			"static": true,
+			"height": 8.1
+		},
+		{
+			"id": "wreck-ship-1",
+			"type": "wreck",
+			"profileId": "ship-wreck-small",
+			"orbitRadius": 900,
+			"orbitPhase": 220,
+			"orbitAround": "sun-1",
+			"static": true,
+			"height": 9.1
+		},
+		{
+			"id": "npc-ship-1",
+			"type": "npc-ship",
+			"profileId": "npc-scout",
+			"orbitRadius": 1000,
+			"orbitPhase": 250,
+			"orbitAround": "sun-1",
+			"static": false,
+			"height": 10.1
+		},
+		{
+			"id": "player-ship",
+			"type": "player-ship",
+			"profileId": "player-falcon",
+			"orbitRadius": 120,
+			"orbitPhase": 180,
+			"orbitAround": "sun-1",
+			"static": false,
+			"height": 11
+		}
+	],
+	"asteroidGroups": [
+		{
+			"id": "belt-1",
+			"orbitRadius": 800,
+			"orbitPhase": 210,
+			"length": 1200,
+			"width": 180,
+			"density": 0.02,
+			"height": 7
+		}
+	]
+}
+	/* Asteroidy nie są listowane pojedynczo w pliku seeda — patrz sekcja `asteroidGroups` */
+	Uwaga: plik seeda NIE powinien zawierać pojedynczych wpisów typu `asteroid`. Zamiast tego definiujemy parametry grupy (`length`, `width`, `density`, opcjonalnie `count`) a runtime rozwinie je do indywidualnych encji asteroidalnych podczas ładowania systemu. Indywidualne asteroidy dostaną wygenerowane fractional `height` (np. `7.1`, `7.2`), lub można przypisać `height` bazowe na poziomie grupy i dodać indeks.
 
-    Co jest zgodne (najważniejsze punkty)
+Pole `orbitPhase`: wartość w stopniach (0–360). Przy generacji systemu wybieramy losowy `orbitPhase` dla każdego obiektu statycznego i zapisujemy go — po odczycie pozycja jest deterministyczna.
 
-    - Typy manifestu i kontrakty danych: assetTypes.ts, assetTypes.ts.
-    - Walidacja runtime manifestu: validateManifest.ts.
-    - Loader assetów i równoległe ładowanie: AssetLoader.ts, AssetLoader.ts, AssetLoader.ts.
-    - Render sprite + fallback w renderable: EntityRenderable.ts, EntityRenderable.ts, EntityRenderable.ts.
-    - Integracja AppShell + async start + bootstrap await: AppShell.ts, AppShell.ts, AppShell.ts, Bootstrap.ts.
-    - Sekcja Assets i Sprite Test w overlay: AppShell.ts, AppShell.ts.
-    - Alias assets w konfiguracji: tsconfig.json, vite.config.ts.
-    - Manifest i 8 PNG (2 na kategorię) są obecne: asset-manifest.json, scout-mk1.png, freighter-standard.png, trading-outpost.png, mining-platform.png, stargate-standard.png, jumpgate-ancient.png, planet-terran.png, asteroid-rocky.png.
-    - Twoje wcześniejsze type-check i build zakończyły się sukcesem (Exit Code 0).
+Uwagi do pól:
+- `orbitAround`: `id` obiektu, wokół którego orbituje (null = centrum systemu).
+- `static`: czy obiekt jest nieruchomy (statyczny) — używane do oznaczania obiektów, które nie mają update() runtime.
+- `height`: wartość porządku rysowania (większa => rysowane 'nad' innymi). Przy remisach stosować deterministyczne przesunięcie (np. inkrementacja na podstawie porządku w pliku), aby uniknąć flicker.
 
-    Krótki feedback praktyczny
-    - Etap 4 jest bardzo blisko pełnej zgodności i technicznie wygląda solidnie.
-    - Największa rzecz do poprawy to spójność dokumentacji w polityce duplikatów.
-    - Dodatkowo warto posprzątać pliki .DS_Store i domknąć ręczny checklist runtime z DoD (konsola + wizualna kontrola sprite).
+Grupy asteroid `asteroidGroups` reprezentować jako zgrupowany, lekko elipsoidalny pas: `orbitRadius` = środek pasa, `length` = długość łuku/pasa w px, `width` = grubość, `density` = średnia liczba asteroid na jednostkę długości.
+
+Asteroidy — pasy i porządek zagnieżdżony
+- Typ bazowy asteroidy to `7`. Każdy pas otrzymuje indeks `beltIndex` (np. 1, 2, ...). Pas ma reprezentację porządkową `7.<beltIndex>`.
+- Indywidualne asteroidy generowane z grupy dostają zagnieżdżony identyfikator porządkowy `7.<beltIndex>.<asteroidIndex>` (gdzie `asteroidIndex` jest numerem w obrębie pasa).
+- Praktyczne pola seedowe:
+	- `beltIndex`: number — indeks pasa (opcjonalny, ale zalecany dla kontroli porządku),
+	- `count`: number — opcjonalna liczba asteroid do wygenerowania (nadpisuje `density`),
+	- `seed`: number — opcjonalny seed losowy, by generacja była deterministyczna.
+- Obliczanie wartości sortującej do renderu (`computedHeight`):
+
+	computedHeight = 7 + (beltIndex / 100) + (asteroidIndex / 1000)
+
+	(np. pas `beltIndex=1` → baza 7.01; trzecia asteroida → 7.013).
+
+- Dzięki temu można mieć wiele pasów blisko siebie; każdy pas ma odrębną część dziesiętną, a asteroidy w pasie mają drobniejszą separację.
+- Rekomendacja: w seedzie definiować `beltIndex` i `count`/`density`; loader wygeneruje indywidualne encje asteroidalne i przypisze `computedHeight` zgodnie z powyższą metodą.
+
+## Dev Overlay — ręczne dodawanie i testowanie
+- Rozszerzyć panel deweloperski o prosty formularz do: wybierz `type`, `profileId` (autocomplete z `VisualProfileRegistry`), `orbitRadius`, `orbitPhase` (deg), `orbitAround` (select z istniejących obiektów), `height` i `spawn`.
+- `Spawn` powinien natychmiast:
+	- utworzyć encję i `Renderable`,
+	- zarejestrować ją w `EntityManager`,
+	- dodać do `WorldLayer`.
+- Opcja dodatkowa: `Export to seed` — zapisać aktualny zestaw statycznych obiektów do pliku JSON (skopiuj do `public/world/systems/<systemId>.json`) albo do `localStorage` (wygodne do testów).
+
+----
+To uzupełnienie zachowuje dotychczasowe założenia (brak kolizji między obiektami, orbitPhase trwale zapisywane). Następne kroki: stworzyć prosty parser seeda (runtime loader), implementować walidację i narzędzie deweloperskie do eksportu/importu seeda.
+
 
