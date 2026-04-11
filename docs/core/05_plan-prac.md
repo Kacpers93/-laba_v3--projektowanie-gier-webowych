@@ -62,6 +62,8 @@ Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
 - seed systemu startowego (format i loader runtime),
 - statyczne pasy asteroid jako element seeda systemu startowego.
 
+Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
+
 ## Etap 5.5
 `world/`, `systems/gates/`, `systems/spawn/`
 - systemy i sektory,
