@@ -10,7 +10,7 @@ import { WorldEntity } from '@world/entities';
 import { expandAsteroidGroups } from './expandAsteroidGroups';
 import { computeOrbitPosition } from './orbitUtils';
 import { SEED_TYPE_TO_CATEGORY } from './seedTypeMapping';
-import type { RuntimeSeedObjectType, SeedObject, SystemSeed } from './seedTypes';
+import type { AsteroidClusterAnchor, RuntimeSeedObjectType, SeedObject, SystemSeed } from './seedTypes';
 import { validateSystemSeed } from './validateSystemSeed';
 
 export interface SystemLoadResult {
@@ -18,6 +18,7 @@ export interface SystemLoadResult {
   entityCount: number;
   renderableCount: number;
   asteroidCount: number;
+  asteroidClusterAnchors: AsteroidClusterAnchor[];
   warnings: string[];
   errors: string[];
   loadTimeMs: number;
@@ -68,12 +69,12 @@ export class SystemSeedLoader {
       if (error) {
         console.error('[SystemSeedLoader] Fetch exception details:', error);
       }
-      return this.buildResult('unknown', 0, 0, 0, warnings, errors, startedAt);
+      return this.buildResult('unknown', 0, 0, 0, [], warnings, errors, startedAt);
     }
 
     if (!response.ok) {
       this.logError(errors, `Failed to fetch seed: ${url}. HTTP ${response.status}.`);
-      return this.buildResult('unknown', 0, 0, 0, warnings, errors, startedAt);
+      return this.buildResult('unknown', 0, 0, 0, [], warnings, errors, startedAt);
     }
 
     let rawSeed: unknown;
@@ -84,7 +85,7 @@ export class SystemSeedLoader {
       if (error) {
         console.error('[SystemSeedLoader] JSON parse exception details:', error);
       }
-      return this.buildResult('unknown', 0, 0, 0, warnings, errors, startedAt);
+      return this.buildResult('unknown', 0, 0, 0, [], warnings, errors, startedAt);
     }
 
     const validation = validateSystemSeed(rawSeed);
@@ -92,7 +93,7 @@ export class SystemSeedLoader {
     validation.errors.forEach((message) => this.logError(errors, message));
 
     if (!validation.valid || !validation.seed) {
-      return this.buildResult('unknown', 0, 0, 0, warnings, errors, startedAt);
+      return this.buildResult('unknown', 0, 0, 0, [], warnings, errors, startedAt);
     }
 
     const seed = validation.seed;
@@ -117,6 +118,15 @@ export class SystemSeedLoader {
       systemCenter: seed.center,
       parentPositions,
     });
+
+    const asteroidClusterAnchors = asteroidExpansion.clusterAnchors.map((anchor) => ({
+      anchorId: anchor.anchorId,
+      clusterId: anchor.clusterId,
+      position: {
+        x: anchor.position.x,
+        y: anchor.position.y,
+      },
+    }));
 
     asteroidExpansion.warnings.forEach((message) => this.logWarning(warnings, message));
 
@@ -200,6 +210,7 @@ export class SystemSeedLoader {
       this.entityManager.size,
       this.renderablesByEntityId.size,
       asteroidCount,
+      asteroidClusterAnchors,
       warnings,
       errors,
       startedAt,
@@ -344,6 +355,7 @@ export class SystemSeedLoader {
     entityCount: number,
     renderableCount: number,
     asteroidCount: number,
+    asteroidClusterAnchors: AsteroidClusterAnchor[],
     warnings: string[],
     errors: string[],
     startedAt: number,
@@ -353,6 +365,7 @@ export class SystemSeedLoader {
       entityCount,
       renderableCount,
       asteroidCount,
+      asteroidClusterAnchors,
       warnings,
       errors,
       loadTimeMs: Math.round(performance.now() - startedAt),

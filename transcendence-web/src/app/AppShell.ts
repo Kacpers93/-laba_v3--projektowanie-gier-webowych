@@ -155,6 +155,8 @@ export class AppShell {
   private lastSystemLoadResult: SystemLoadResult | null = null;
   private currentSystemId = '-';
   private readonly systemCenter: Vector2 = { x: 0, y: 0 };
+  private readonly virtualOrbitAroundAnchors = new Map<string, { clusterId: string; position: Vector2 }>();
+  private devSpawnOrbitAroundRefresh: (() => void) | null = null;
   private devSpawnCounter = 0;
 
   private started = false;
@@ -341,6 +343,8 @@ export class AppShell {
     }
 
     this.started = true;
+    this.virtualOrbitAroundAnchors.clear();
+    this.devSpawnOrbitAroundRefresh?.();
 
     const manifest = await this.assetLoader.loadManifest('/art/asset-manifest.json');
     if (manifest) {
@@ -351,6 +355,18 @@ export class AppShell {
     const loadResult = await this.systemSeedLoader.loadSystem(SYSTEM_SEED_URL);
     this.lastSystemLoadResult = loadResult;
     this.currentSystemId = loadResult.systemId;
+
+    this.virtualOrbitAroundAnchors.clear();
+    loadResult.asteroidClusterAnchors.forEach((anchor) => {
+      this.virtualOrbitAroundAnchors.set(anchor.anchorId, {
+        clusterId: anchor.clusterId,
+        position: {
+          x: anchor.position.x,
+          y: anchor.position.y,
+        },
+      });
+    });
+    this.devSpawnOrbitAroundRefresh?.();
 
     this.canvas.focus();
     this.gameLoop.start();
@@ -705,6 +721,8 @@ export class AppShell {
       );
     };
 
+    this.devSpawnOrbitAroundRefresh = refreshOrbitAroundControl;
+
     section.registerControl(
       'type',
       'type',
@@ -789,13 +807,18 @@ export class AppShell {
 
     let parentPosition = this.systemCenter;
     if (config.orbitAround) {
-      const parent = this.entityManager.get(config.orbitAround);
-      if (!parent) {
-        console.warn(`[AppShell] Dev Spawn: parent "${config.orbitAround}" not found.`);
-        return false;
-      }
+      const virtualAnchor = this.virtualOrbitAroundAnchors.get(config.orbitAround);
+      if (virtualAnchor) {
+        parentPosition = virtualAnchor.position;
+      } else {
+        const parent = this.entityManager.get(config.orbitAround);
+        if (!parent) {
+          console.warn(`[AppShell] Dev Spawn: parent "${config.orbitAround}" not found.`);
+          return false;
+        }
 
-      parentPosition = parent.position;
+        parentPosition = parent.position;
+      }
     }
 
     const normalizedPhase = ((config.orbitPhase % 360) + 360) % 360;
@@ -847,10 +870,20 @@ export class AppShell {
   }
 
   private getOrbitAroundOptions(): DevOverlaySelectOption[] {
-    return this.entityManager
+    const entityOptions = this.entityManager
       .getAll()
+      .filter((entity) => !(entity instanceof WorldEntity && entity.seedType === 'asteroid'))
       .map((entity) => ({ value: entity.id, label: entity.id }))
       .sort((a, b) => a.label.localeCompare(b.label));
+
+    const clusterOptions = Array.from(this.virtualOrbitAroundAnchors.entries())
+      .map(([anchorId, anchor]) => ({
+        value: anchorId,
+        label: `asteroid-cluster:${anchor.clusterId}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [...entityOptions, ...clusterOptions];
   }
 
   private getAsteroidCount(): number {

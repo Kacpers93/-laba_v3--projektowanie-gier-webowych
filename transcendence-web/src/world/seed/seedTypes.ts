@@ -70,6 +70,18 @@ export type SeedObjectType =
 /** Runtime rozszerza typ obiektu o asteroidy wygenerowane z grup. */
 export type RuntimeSeedObjectType = SeedObjectType | 'asteroid';
 
+/** Stabilny punkt orbitowania reprezentujacy srodek klastra asteroid. */
+export interface AsteroidClusterAnchor {
+  /** Stabilny identyfikator opcji orbitAround dla klastra. */
+  anchorId: string;
+
+  /** Identyfikator klastra (asteroidGroups[].id). */
+  clusterId: string;
+
+  /** Pozycja srodka klastra w przestrzeni swiata. */
+  position: Vector2;
+}
+
 /** Definicja grupy asteroid w seedzie. */
 export interface AsteroidGroupDef {
   /** Identyfikator grupy (np. 'belt-1'). */
