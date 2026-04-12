@@ -613,14 +613,14 @@ Nowa sekcja "Dev Spawn" w Dev Overlay:
 
 | # | Test | Oczekiwany wynik |
 |---|---|---|---|
-| M1 | Uruchom `npm run dev` — system załadowany | Canvas pokazuje gwiezdę w centrum, planety na orbitach, stacje, wrota itd. | nie gwiazde ale obiekt sie pojawia wiec test spelniony |
+| M1 | Uruchom `npm run dev` — system załadowany | Canvas pokazuje gwiezdę w centrum, planety na orbitach, stacje, wrota itd. | nie gwiazde, ale obiekt sie pojawia wiec test spelniony |
 | M2 | Dev Overlay → sekcja System → entities > 0 | Liczba odpowiada liczbie obiektów w seedzie + rozwinięte asteroidy | Wszystko sie zgadza |
-| M3 | Dev Overlay → System → load time < 500ms | Seed ładuje się szybko |
+| M3 | Dev Overlay → System → load time < 500ms | Seed ładuje się szybko | Wszystko sie zgadza |
 | M4 | Dev Overlay → System → warnings = 0, errors = 0 | Poprawny seed nie generuje ostrzeżeń | Wszystko sie zgadza |
 | M5 | Zmień `profileId` na nieistniejący w seedzie, przeładuj | Czerwony prostokąt z fallbackiem, `console.warn` w konsoli | Wszystko sie zgadza |
 | M6 | Duplikuj `id` obiektu w seedzie, przeładuj | Drugi wpis odrzucony, `console.error` w konsoli | Wszystko sie zgadza |
-| M7 | Ustaw `orbitAround` na nieistniejący id, przeładuj | Wpis odrzucony, `console.error` w konsoli |
-| M8 | Ustaw obiekt statyczny daleko poza `maxBoundaryRadius`, przeładuj | Obiekt pominięty, `console.warn` |
+| M7 | Ustaw `orbitAround` na nieistniejący id, przeładuj | Wpis odrzucony, `console.error` w konsoli | Wszystko sie zgadza |
+| M8 | Ustaw obiekt statyczny daleko poza `maxBoundaryRadius`, przeładuj | Obiekt pominięty, `console.warn` | Wszystko sie zgadza |
 | M9 | Usuń `sol-001.json`, przeładuj | Gra startuje z pustym systemem, `console.error` | Wszystko sie zgadza |
 | M10 | Przeładuj stronę 3 razy — pozycje identyczne | Deterministyczność potwierdzona | Wszystko sie zgadza |
 | M11 | Przesuń kamerę — culling działa | Obiekty poza frustum nie renderują się |  Wszystko sie zgadza |
