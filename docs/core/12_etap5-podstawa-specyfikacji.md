@@ -203,7 +203,7 @@ Ten szkic jest wstępny — szczegóły implementacyjne (API seeda, format manif
 	- dodać do `WorldLayer`.
 Uwaga zakresu:
 - Etap 5: narzędzie pomocnicze do pracy na realnych obiektach w jednym systemie startowym.
-- Etap 5.5: doprecyzowanie docelowego API świata, wielosystemowości i kontraktów architektury.
+- Etap 8: doprecyzowanie docelowego API świata, wielosystemowości i kontraktów architektury.
 
 ----
 To uzupełnienie zachowuje dotychczasowe założenia (brak kolizji między obiektami, orbitPhase trwale zapisywane). Następne kroki: stworzyć prosty parser seeda (runtime loader), implementować walidację i narzędzie deweloperskie do eksportu/importu seeda.

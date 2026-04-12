@@ -8,7 +8,10 @@ Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 - Etap 2: wdrożony.
 - Etap 3: wdrożony.
 - Etap 3.5: wdrożony.
-- Etapy 4–9: planowane.
+- Etap 4: wdrożony.
+- Etap 5: wdrożony.
+- Etap 5.5: planowany.
+- Etapy 6–11: planowane.
 
 ## Etap 1
 `app/`, `engine/`, `physics/`, `types/`
@@ -65,21 +68,15 @@ Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
 Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
 
 ## Etap 5.5
-`world/`, `systems/gates/`, `systems/spawn/`
-- systemy i sektory,
-- wrota i przejścia między systemami,
-- widoczność jednostek przez bramy,
-- spawnowanie z limitami,
-- mechaniki wielosystemowe dla asteroid (pola/spawnery) bez redefinicji seeda systemu startowego z Etapu 5,
-- reputacja sektora i gating modulów.
+`engine/input/`, `systems/flight/`, `dev/` (rozszerzenie)
+- wdrożenie Flight Model (fizyka Newtonowska, thrustery, obrót, Flight Assist),
+- wstępny model przemieszczania gracza do testowania,
+- dev mode toggle — gdy aktywny, powrót do swobodnego przesuwania po planszy bez Flight Model,
+- publiczne gettery statystyk lotu w ship (velocity, acceleration, heading).
 
-- Wstępny model Etapu 5.5: `docs/specs/05_etap5.5-world-architecture.md`
+Kryteria zamknięcia Etapu 5.5: model lotu w pełni funkcjonalny i testowany, dev mode toggle działa.
 
 ## Etap 6
-`systems/reactor/`, `ship-mass/`, `flight/`, `weapons/`, `shields/`, `capture/`
-- wdrożenie podstawowych mechanik gameplayowych.
-
-## Etap 7
 `ui/`
 - HUD,
 - menu,
@@ -88,11 +85,28 @@ Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
 - inventory,
 - ship status.
 
+Kryteria zamknięcia Etapu 6: edycja UI zintegrowana z systemem gry i gotowa do feedback'ów z testów.
+
+## Etap 7
+`systems/reactor/`, `ship-mass/`, `flight/`, `weapons/`, `shields/`, `capture/`
+- wdrożenie podstawowych mechanik gameplayowych.
+
 ## Etap 8
+`world/`, `systems/gates/`, `systems/spawn/`
+- systemy i sektory,
+- wrota i przejścia między systemami,
+- widoczność jednostek przez bramy,
+- spawnowanie z limitami,
+- respawn zniszczonych asteroid po upłynięciu czasu,
+- reputacja sektora i gating modulów.
+
+- Wstępny model Etapu 8: `docs/specs/05_etap7-world-architecture.md`
+
+## Etap 9
 `items/`, `missions/`, `factions/`, `world/spawn/`
 - rozbudowa contentu i tabel spawnu.
 
-## Etap 9
+## Etap 10
 `presentation/variants/`, `presentation/effects/`, `public/audio/`
 - warianty wizualne,
 - efekty,

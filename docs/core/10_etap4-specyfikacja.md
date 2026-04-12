@@ -68,7 +68,7 @@ Dokument nie opisuje chwilowego stanu repozytorium, tylko wymagania końcowe.
 - Warianty frakcyjne i uszkodzeniowe — to Etap 9.
 - Efekty cząsteczkowe — to Etap 9.
 - Assety audio — to Etap 9.
-- Assety UI — to Etap 7.
+- Assety UI — to Etap 6.
 
 ---
 

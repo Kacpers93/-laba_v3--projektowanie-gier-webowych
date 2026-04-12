@@ -1,15 +1,15 @@
-# Etap 5.5 — Architektura Świata i Wrota
+# Etap 8 — Architektura Świata i Wrota
 
 > Status: v1.0 — specyfikacja
 > Pliki implementacyjne: `src/world/`, `src/systems/gates/`, `src/systems/spawn/`
 
 ## Cel
 
-Etap 5.5 definiuje strukturę świata gry na poziomie makro: systemy, sektory, wrota, obiekty w systemach oraz reguły spawnu i widoczności. Ustanawia kontrakty pozwalające na łączenie bytów w sensowne grupy, przechodzenie między systemami oraz zarządzanie ilością jednostek w danym obszarze.
+Etap 8 definiuje strukturę świata gry na poziomie makro: systemy, sektory, wrota, obiekty w systemach oraz reguły spawnu i widoczności. Ustanawia kontrakty pozwalające na łączenie bytów w sensowne grupy, przechodzenie między systemami oraz zarządzanie ilością jednostek w danym obszarze.
 
-Zakres względem Etapu 5: Etap 5.5 rozszerza model świata o wielosystemowość, sektory i przejścia; nie redefiniuje formatu seeda pojedynczego systemu startowego z Etapu 5.
+Zakres względem Etapu 5: Etap 8 rozszerza model świata o wielosystemowość, sektory i przejścia; nie redefiniuje formatu seeda pojedynczego systemu startowego z Etapu 5.
 
-Po zamknięciu Etapu 5.5 Etap 6 (systemy gameplayowe) może pracować na założeniu, że świat ma znaną strukturę i obiekty można przechodzić między systemami bez utraty synchronizacji.
+Po zamknięciu Etapu 8 Etap 7 (systemy gameplayowe) może pracować na założeniu, że świat ma znaną strukturę i obiekty można przechodzić między systemami bez utraty synchronizacji.
 
 ---
 
@@ -463,7 +463,7 @@ function spawnAsteroidsFromField(
 
 ---
 
-## 8. Kryteria zamknięcia Etapu 5.5
+## 8. Kryteria zamknięcia Etapu 7
 
 - [ ] Zdefiniować `SectorDef` i `SystemDef` w `src/world/`.
 - [ ] Zdefiniować `CelestialBodyDef`, `StationDef`, `AsteroidFieldDef`, `GateDef`.
@@ -496,5 +496,5 @@ Asteroidy mogą być spawniane dynamicznie z pól (obecna specyfikacja) lub **pr
 
 - **Etap 3**: `GameEntity` — każda jednostka dynamiczna musi implementować `GameEntity`.
 - **Etap 4**: `VisualProfile` — wrota, stacje, ciała niebieskie mają profile wizualne.
-- **Etap 6**: Systemy gameplayowe (reaktor, lot, zbieranie) pracują na założeniu synchronizacji w systemie i limitu jednostek.
-- **Etap 7**: UI pokazuje aktualny system gracza, mapę sektora i dostępne moduły.
+- **Etap 6**: UI pokazuje aktualny system gracza, mapę sektora i dostępne moduły.
+- **Etap 7**: Systemy gameplayowe (reaktor, lot, zbieranie) pracują na założeniu synchronizacji w systemie i limitu jednostek.

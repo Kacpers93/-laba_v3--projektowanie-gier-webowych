@@ -4,7 +4,7 @@
 
 Zastąpić byt testowy (`DevTestEntity`) rzeczywistym ładowaniem seeda systemu startowego i rejestracją encji w `EntityManager` oraz renderowalnych obiektów w `WorldLayer`. Dostarczyć kompletny pipeline: wczytanie pliku seeda → walidacja → instancjonowanie encji → tworzenie renderowalnych → rejestracja w scenie. Po zamknięciu Etapu 5 na ekranie widać jeden w pełni załadowany system gwiezdny z gwiazdą, planetami, księżycami, wrotami, stacjami, asteroidy (rozwinięte z grup), kontenerami, wrakami i statkami.
 
-Etap 5 buduje fundament kompatybilny z Etapem 5.5 (wielosystemowość, sektory, wrota), ale nie implementuje jego zakresu.
+Etap 5 buduje fundament kompatybilny z Etapem 8 (wielosystemowość, sektory, wrota), ale nie implementuje jego zakresu.
 
 ---
 
@@ -106,14 +106,14 @@ Etap 5 buduje fundament kompatybilny z Etapem 5.5 (wielosystemowość, sektory, 
 
 ### NIE wchodzi w Etap 5
 
-- Wielosystemowość, sektory, `SectorDef` — to Etap 5.5.
-- Przejścia przez wrota i `transitionUnit()` — to Etap 5.5.
-- Widoczność jednostek przez bramy — to Etap 5.5.
-- Spawnowanie dynamiczne z limitami (`Spawner`, `SpawnLimits`) — to Etap 5.5.
-- Kolizje gameplayowe i systemy bojowe — to Etap 6.
-- Mechaniki lotu, reaktora, broni, osłon — to Etap 6.
-- HUD, menu, ekrany UI — to Etap 7.
-- Reputacja sektora i gating modułów — to Etap 5.5.
+- Wielosystemowość, sektory, `SectorDef` — to Etap 8.
+- Przejścia przez wrota i `transitionUnit()` — to Etap 8.
+- Widoczność jednostek przez bramy — to Etap 8.
+- Spawnowanie dynamiczne z limitami (`Spawner`, `SpawnLimits`) — to Etap 8.
+- Kolizje gameplayowe i systemy bojowe — to Etap 7.
+- Mechaniki lotu, reaktora, broni, osłon — to Etap 7.
+- HUD, menu, ekrany UI — to Etap 6.
+- Reputacja sektora i gating modułów — to Etap 8.
 - Animacje sprite'ów — to Etap 9.
 - Dynamiczny ruch planet/księżycy po orbitach w runtime (orbity są wizualne/statyczne w Etapie 5).
 
@@ -449,7 +449,7 @@ export class WorldEntity extends BaseEntity {
 }
 ```
 
-**Decyzja architekturalna:** Zamiast odrębnych klas `CelestialEntity`, `StationEntity`, `GateEntity` itd., Etap 5 używa jednej klasy `WorldEntity` z polem `seedType`. Odrębne klasy będą potrzebne dopiero gdy pojawi się specyficzna logika gameplayowa (Etap 6+). W Etapie 5 każdy obiekt ma identyczny zestaw pól i zachowań (pozycja, rotacja, bounding box, statyczność).
+**Decyzja architekturalna:** Zamiast odrębnych klas `CelestialEntity`, `StationEntity`, `GateEntity` itd., Etap 5 używa jednej klasy `WorldEntity` z polem `seedType`. Odrębne klasy będą potrzebne dopiero gdy pojawi się specyficzna logika gameplayowa (Etap 7+). W Etapie 5 każdy obiekt ma identyczny zestaw pól i zachowań (pozycja, rotacja, bounding box, statyczność).
 
 ---
 

@@ -627,12 +627,12 @@ Etap 3 **nie** obejmuje:
 - Konkretnych typów bytów (statki, stacje, wrota, wraki, pociski) — to Etap 5.
 - Assetów graficznych (PNG, sprite sheety) — to Etap 4.
 - Konkretnych profili wizualnych (wygląd scout-a, wygląd stacji handlowej) — to Etapy 4–5.
-- Mechanik gameplayowych (lot, reaktor, broń, osłony) — to Etap 6.
-- HUD, menu, ekranów UI — to Etap 7.
+- Mechanik gameplayowych (lot, reaktor, broń, osłony) — to Etap 7.
+- HUD, menu, ekranów UI — to Etap 6.
 - Efektów cząsteczkowych i wariantów wizualnych — to Etap 9.
 - Systemu spawnu bytów — to Etap 5/8.
 - Systemów AI i zachowań NPC.
-- Kolizji między bytami (detekcja i odpowiedź) — to Etap 5/6.
+- Kolizji między bytami (detekcja i odpowiedź) — to Etap 5/7.
 
 ---
 

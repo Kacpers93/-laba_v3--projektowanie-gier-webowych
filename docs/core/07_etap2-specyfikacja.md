@@ -279,7 +279,7 @@ import '@/styles/layers.css';
 
 ### Co **nie** wchodzi w Etapie 2
 
-- Style HUD, ekranów, widgetów — to Etap 7.
+- Style HUD, ekranów, widgetów — to Etap 6.
 - Zmienne CSS, tokeny kolorów, typografia — wejdą gdy pojawi się UI.
 - Style per komponent — każdy ekran/widget przynosi swój CSS w swoim folderze (opisane w `03_ui-dom.md`).
 
