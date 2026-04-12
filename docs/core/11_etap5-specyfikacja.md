@@ -81,7 +81,7 @@ Etap 5 buduje fundament kompatybilny z Etapem 5.5 (wielosystemowość, sektory, 
 1. **Brak formatu seeda systemu** — nie ma schematu pliku JSON definiującego obiekty systemu.
 2. **Brak loadera seeda** — nie ma klasy ładującej i walidującej plik seeda.
 3. **Brak konkretnych klas encji** — `BaseEntity` jest abstrakcyjna; brak `CelestialEntity`, `StationEntity`, `GateEntity` itp.
-4. **Brak mechanizmu rozwijania grup asteroidy** — `asteroidGroups` z B_notatka.md nie ma implementacji.
+4. **Brak mechanizmu rozwijania grup asteroidy** — `asteroidGroups` z 12_etap5-podstawa-specyfikacji.md nie ma implementacji.
 5. **Brak obliczania pozycji z orbit** — konwersja `(orbitRadius, orbitPhase, parentId)` → `Vector2` nie istnieje.
 6. **Brak sortowania renderowalnych po `height`** — `WorldLayer` nie sortuje po porządku rysowania.
 7. **Brak pipeline'u wiążącego seed → encje → renderables → scene**.
@@ -741,4 +741,4 @@ src/
 |---|---|
 | `05_plan-prac.md` | Dodać link: „Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12". |
 | `10_etap4-specyfikacja.md` | Bez zmian. |
-| `B_notatka.md` | Bez zmian — dokument jest wstępnym szkicem, Etap 5 go uszczegółowia i formalizuje. |
+| `12_etap5-podstawa-specyfikacji.md` | Bez zmian — dokument jest wstępnym szkicem, Etap 5 go uszczegółowia i formalizuje. |

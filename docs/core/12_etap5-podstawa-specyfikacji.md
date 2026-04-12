@@ -1,4 +1,4 @@
-# B — Wstępny zarys Etapu 5
+# Podstawa specyfikacji Etapu 5
 
 ## Cel
 - Wdrożenie podstawowego szkieletu świata dla jednego systemu: osadzenie bytów (słońce, planety, księżyce, wrota, wraki stacji, stacje, asteroidy, kontenery, wraki statków, statki NPC, statek gracza) w sposób oparty na danych.
@@ -207,5 +207,3 @@ Uwaga zakresu:
 
 ----
 To uzupełnienie zachowuje dotychczasowe założenia (brak kolizji między obiektami, orbitPhase trwale zapisywane). Następne kroki: stworzyć prosty parser seeda (runtime loader), implementować walidację i narzędzie deweloperskie do eksportu/importu seeda.
-
-
