@@ -3,8 +3,11 @@ Plik zawiera kontrakty TypeScript dla metryk i kontrolek panelu developerskiego.
 
 ## Co eksportuje
 - Interfejs DevMetric
+- Interfejs DevSelectOption
 - Interfejs DevCheckboxControl
 - Interfejs DevButtonControl
+- Interfejs DevNumberControl
+- Interfejs DevSelectControl
 - Typ unii DevControl
 
 ## Zaleznosci zewnetrzne i wewnetrzne

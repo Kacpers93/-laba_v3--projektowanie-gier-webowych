@@ -21,6 +21,9 @@ const loop = new GameLoop({
 loop.start();
 ```
 
+## Dokumentacja plikowa
+- GameLoop.ts.md
+
 ## Czego NIE robi
 - Nie harmonizuje petli sieciowej.
 - Nie robi profilowania ani statystyk FPS poza prostym logowaniem.

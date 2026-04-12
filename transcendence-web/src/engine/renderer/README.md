@@ -17,6 +17,10 @@ const renderer = new Renderer(canvas);
 const camera = new Camera(renderer.width, renderer.height);
 ```
 
+## Dokumentacja plikowa
+- Camera.ts.md
+- Renderer.ts.md
+
 ## Czego NIE robi
 - Nie implementuje zarzadzania shaderami/WebGL.
 - Nie rysuje obiektow sceny bezposrednio (to robi `SceneRenderer` i warstwy).

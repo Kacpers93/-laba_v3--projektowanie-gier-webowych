@@ -19,6 +19,12 @@ import { ACTIVE_PARALLAX_SUBLAYERS } from '@/presentation/scene/parallax-presets
 ```
 Zmiana aktywnego wariantu odbywa sie przez podmiane eksportu w `index.ts`.
 
+## Dokumentacja plikowa
+- index.ts.md
+- cool.ts.md
+- subtle.ts.md
+- warm.ts.md
+
 ## Czego NIE robi
 - Nie renderuje nic samodzielnie.
 - Nie przechowuje runtime stanu warstw.

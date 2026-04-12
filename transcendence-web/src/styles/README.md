@@ -17,6 +17,10 @@ import '@/styles/reset.css';
 import '@/styles/layers.css';
 ```
 
+## Dokumentacja plikowa
+- reset.css.md
+- layers.css.md
+
 ## Czego NIE robi
 - Nie zawiera komponentowych stylow UI.
 - Nie definiuje systemu tematow ani tokenow designu.

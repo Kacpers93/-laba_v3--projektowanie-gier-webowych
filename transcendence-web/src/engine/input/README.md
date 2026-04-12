@@ -19,6 +19,11 @@ const gameInput = new GameInput(canvas, modes);
 gameInput.onAction('toggle-ui', () => modes.setMode('ui'));
 ```
 
+## Dokumentacja plikowa
+- GameInput.ts.md
+- InputModeManager.ts.md
+- UIInput.ts.md
+
 ## Czego NIE robi
 - Nie mapuje kontrolerow gamepad.
 - Nie przechowuje konfiguracji keybindow poza kodem.

@@ -17,6 +17,9 @@ await audio.init();
 audio.playMusic('/music/theme.mp3');
 ```
 
+## Dokumentacja plikowa
+- AudioManager.ts.md
+
 ## Czego NIE robi
 - Nie zarzadza preloadem assetow audio.
 - Nie synchronizuje audio z timeline rozgrywki.

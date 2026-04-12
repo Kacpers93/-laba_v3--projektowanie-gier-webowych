@@ -22,6 +22,12 @@ const canvas = cache.getOrCreate('bg', w, h, (ctx) => {
 });
 ```
 
+## Dokumentacja plikowa
+- OffscreenCache.ts.md
+- EntityCacheBudget.ts.md
+- EntityLruIndex.ts.md
+- cacheTypes.ts.md
+
 ## Czego NIE robi
 - Nie zarzadza cachem dyskowym ani persystencja.
 - Nie serializuje cache do dysku.
