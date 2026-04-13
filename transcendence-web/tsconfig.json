@@ -20,6 +20,7 @@
       "@entities/*": ["./src/entities/*"],
       "@physics/*": ["./src/physics/*"],
       "@presentation/*": ["./src/presentation/*"],
+      "@systems/*": ["./src/systems/*"],
       "@world/*": ["./src/world/*"],
       "@types/*": ["./src/types/*"]
     }

@@ -10,7 +10,7 @@ Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 - Etap 3.5: wdrożony.
 - Etap 4: wdrożony.
 - Etap 5: wdrożony.
-- Etap 5.5: planowany.
+- Etap 5.5: wdrożony.
 - Etapy 6–11: planowane.
 
 ## Etap 1
@@ -74,7 +74,7 @@ Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
 - dev mode toggle — gdy aktywny, powrót do swobodnego przesuwania po planszy bez Flight Model,
 - publiczne gettery statystyk lotu w ship (velocity, acceleration, heading).
 
-Kryteria zamknięcia Etapu 5.5: model lotu w pełni funkcjonalny i testowany, dev mode toggle działa.
+Kryteria zamknięcia Etapu 5.5: `13_etap5.5-specyfikacja.md`, sekcja 12.
 
 ## Etap 6
 `ui/`
