@@ -15,6 +15,7 @@ export default defineConfig({
       '@entities': path.resolve(__dirname, './src/entities'),
       '@physics': path.resolve(__dirname, './src/physics'),
       '@presentation': path.resolve(__dirname, './src/presentation'),
+      '@systems': path.resolve(__dirname, './src/systems'),
       '@world': path.resolve(__dirname, './src/world'),
       '@types': path.resolve(__dirname, './src/types'),
     },

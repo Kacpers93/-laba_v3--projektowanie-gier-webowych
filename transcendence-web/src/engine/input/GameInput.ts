@@ -1,5 +1,6 @@
 import type { Vector2 } from '@/types/common';
 import type { Camera } from '@engine/renderer/Camera';
+import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
 import { InputModeManager } from './InputModeManager';
 
 export class GameInput {
@@ -90,6 +91,10 @@ export class GameInput {
 
     if (key === 'escape') {
       this.bufferedActions.push('toggle-ui');
+    }
+
+    if (key === FLIGHT_KEY_MAP['toggle-flight-assist']) {
+      this.bufferedActions.push('toggle-flight-assist');
     }
   };
 

@@ -5,6 +5,8 @@ import { UIInput } from '@engine/input/UIInput';
 import { GameLoop } from '@engine/loop/GameLoop';
 import { Camera } from '@engine/renderer/Camera';
 import { Renderer } from '@engine/renderer/Renderer';
+import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
+import { DEFAULT_FLIGHT_CONFIG } from '@systems/flight/flightConfig';
 import { AssetLoader } from '@assets/AssetLoader';
 import { registerManifestProfiles } from '@assets/registerManifestProfiles';
 import { BaseEntity, EntityManager } from '@entities/base';
@@ -22,7 +24,7 @@ import { ACTIVE_PARALLAX_SUBLAYERS } from '@presentation/scene/parallax-presets'
 import { ParallaxLayer } from '@presentation/scene/ParallaxLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@presentation/scene/WorldLayer';
-import { WorldEntity } from '@world/entities';
+import { PlayerShipEntity, WorldEntity } from '@world/entities';
 import {
   BASE_HEIGHT_BY_SEED_TYPE,
   computeOrbitPosition,
@@ -158,6 +160,8 @@ export class AppShell {
   private readonly virtualOrbitAroundAnchors = new Map<string, { clusterId: string; position: Vector2 }>();
   private devSpawnOrbitAroundRefresh: (() => void) | null = null;
   private devSpawnCounter = 0;
+  private playerShipEntity: PlayerShipEntity | null = null;
+  private devFlightMode = false;
 
   private started = false;
 
@@ -296,6 +300,56 @@ export class AppShell {
         );
         systemSection.registerMetric('errors', 'errors', () => this.lastSystemLoadResult?.errors.length ?? 0);
 
+        const flightSection = overlay.registerSection('flight', 'Flight');
+        flightSection.registerMetric('status', 'status', () =>
+          this.playerShipEntity ? 'ready' : 'no player-ship',
+        );
+        flightSection.registerMetric('speed', 'speed', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          return `${this.playerShipEntity.speed.toFixed(1)} px/s`;
+        });
+        flightSection.registerMetric('heading', 'heading', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          const headingDeg = (this.playerShipEntity.heading * 180) / Math.PI;
+          return `${headingDeg.toFixed(1)} deg`;
+        });
+        flightSection.registerMetric('velocity', 'velocity', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          const velocity = this.playerShipEntity.currentVelocity;
+          return `(${velocity.x.toFixed(1)}, ${velocity.y.toFixed(1)})`;
+        });
+        flightSection.registerMetric('acceleration', 'acceleration', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          const acceleration = this.playerShipEntity.acceleration;
+          return `(${acceleration.x.toFixed(1)}, ${acceleration.y.toFixed(1)})`;
+        });
+        flightSection.registerMetric('flight-assist', 'flight-assist', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          return this.playerShipEntity.isFlightAssistEnabled ? 'ON' : 'OFF';
+        });
+        flightSection.registerMetric('position', 'position', () => {
+          if (!this.playerShipEntity) {
+            return '-';
+          }
+
+          return `(${this.playerShipEntity.position.x.toFixed(1)}, ${this.playerShipEntity.position.y.toFixed(1)})`;
+        });
+
         const spriteTestSection = overlay.registerSection('sprite-test', 'Sprite Test');
         spriteTestSection.registerMetric('active', 'active', () => this.activeSpriteTestProfileId ?? '-');
         spriteTestSection.registerMetric('available', 'available', () => this.getSpriteProfileIds().length);
@@ -316,6 +370,7 @@ export class AppShell {
             this.setDevTestEntityEnabled(enabled);
           },
         );
+        this.registerDevFlightModeControl();
 
         this.registerDevSpawnSection(overlay);
       });
@@ -343,6 +398,8 @@ export class AppShell {
     }
 
     this.started = true;
+    this.playerShipEntity = null;
+    this.devFlightMode = false;
     this.virtualOrbitAroundAnchors.clear();
     this.devSpawnOrbitAroundRefresh?.();
 
@@ -367,6 +424,11 @@ export class AppShell {
       });
     });
     this.devSpawnOrbitAroundRefresh?.();
+
+    this.initializePlayerShipEntity();
+    if (import.meta.env.DEV) {
+      this.registerDevFlightModeControl();
+    }
 
     this.canvas.focus();
     this.gameLoop.start();
@@ -406,7 +468,26 @@ export class AppShell {
     this.entityManager.sweepDead();
     this.pruneRenderables();
 
+    if (this.playerShipEntity && !this.entityManager.has(this.playerShipEntity.id)) {
+      this.playerShipEntity = null;
+      this.devFlightMode = false;
+    }
+
     if (this.inputModeManager.mode !== 'game') {
+      return;
+    }
+
+    if (this.playerShipEntity) {
+      this.playerShipEntity.updateFlight(dt, {
+        rotateLeft: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['rotate-left']),
+        rotateRight: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['rotate-right']),
+        rearThruster: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['rear-thruster']),
+        frontThruster: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['front-thruster']),
+      });
+    }
+
+    if (this.devFlightMode && this.playerShipEntity) {
+      this.camera.follow(this.playerShipEntity.position);
       return;
     }
 
@@ -483,6 +564,10 @@ export class AppShell {
       this.inputModeManager.setMode('ui');
     });
 
+    this.gameInput.onAction('toggle-flight-assist', () => {
+      this.playerShipEntity?.toggleFlightAssist();
+    });
+
     this.uiInput.onCancel(() => {
       this.inputModeManager.setMode('game');
     });
@@ -502,6 +587,68 @@ export class AppShell {
 
   private getAudioState(): string {
     return 'running';
+  }
+
+  private initializePlayerShipEntity(): void {
+    const playerShip = this.entityManager
+      .getAll()
+      .find(
+        (entity): entity is WorldEntity =>
+          entity instanceof WorldEntity && entity.seedType === 'player-ship',
+      );
+
+    if (!playerShip) {
+      this.playerShipEntity = null;
+      this.devFlightMode = false;
+      console.warn('[AppShell] No player-ship in seed. Starting with free camera mode.');
+      return;
+    }
+
+    const width = playerShip.boundingBox.max.x - playerShip.boundingBox.min.x;
+    const height = playerShip.boundingBox.max.y - playerShip.boundingBox.min.y;
+
+    const upgradedPlayerShip = new PlayerShipEntity({
+      id: playerShip.id,
+      category: playerShip.category,
+      seedType: playerShip.seedType,
+      position: playerShip.position,
+      width,
+      height,
+      computedHeight: playerShip.computedHeight,
+      isStatic: playerShip.isStatic,
+      profileId: playerShip.profileId,
+      flightConfig: DEFAULT_FLIGHT_CONFIG,
+    });
+
+    upgradedPlayerShip.previousPosition = { ...playerShip.previousPosition };
+    upgradedPlayerShip.velocity = { ...playerShip.velocity };
+    upgradedPlayerShip.rotation = playerShip.rotation;
+    upgradedPlayerShip.previousRotation = playerShip.previousRotation;
+
+    this.entityManager.add(upgradedPlayerShip);
+    this.playerShipEntity = upgradedPlayerShip;
+    this.devFlightMode = true;
+    this.camera.follow(upgradedPlayerShip.position);
+  }
+
+  private registerDevFlightModeControl(): void {
+    if (!this.devOverlay) {
+      return;
+    }
+
+    const devFlagsSection = this.devOverlay.registerSection('dev-flags', 'Dev Flags');
+    devFlagsSection.registerControl(
+      'flight-mode',
+      'Flight mode',
+      'checkbox',
+      this.devFlightMode,
+      (enabled: boolean) => {
+        this.devFlightMode = enabled;
+        if (this.devFlightMode && this.playerShipEntity) {
+          this.camera.follow(this.playerShipEntity.position);
+        }
+      },
+    );
   }
 
   private registerDevVisualProfiles(): void {
