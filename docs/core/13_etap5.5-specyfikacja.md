@@ -758,3 +758,285 @@ src/
 | 8 | Czy kolejność implementacji jest liniowa i zależnościowa? | ✅ Tak — 14 kroków, każdy zależy od poprzedniego. |
 | 9 | Czy dokument nie psuje kompatybilności z dalszą rozbudową? | ✅ Tak — `FlightConfig` będzie zastąpiony przez `ShipDef + drive.thrust` w Etapie 7. `FLIGHT_KEY_MAP` przez `InputBindingsStore` w Etapie 6+. |
 | 10 | Czy język jest jednoznaczny, wdrożeniowy, bez ogólników? | ✅ Tak. |
+
+---
+
+## 15. Rozszerzenie Etapu 5.5: Optymalizacja renderu (5.5.1)
+
+### 15.1. Cel rozszerzenia
+
+Podnieść stabilność FPS dla dużych rozmiarów okna (ok. 2119x1160) bez zmiany mechanik gameplayu z Etapu 5.5. Rozszerzenie dotyczy wyłącznie warstwy render/input-orderingu.
+
+### 15.2. Zakres rozszerzenia (wchodzi)
+
+1. Adaptacyjna skala renderu canvasa (internal render scale) zależna od powierzchni viewportu.
+2. Korekta mapowania pozycji myszy do przestrzeni canvasa przy włączonej skali renderu.
+3. Sortowanie renderables w `WorldLayer` tylko przy zmianie porządku (`dirty sort`) zamiast sortowania co klatkę.
+
+### 15.3. Poza zakresem rozszerzenia
+
+- Zmiana mechaniki lotu, FA, soft drag, seed loadera i systemów Etapu 5.
+- Zmiana formatu assetów oraz profili wizualnych.
+- Przebudowa cullingu do struktur przestrzennych (grid/quadtree).
+
+### 15.4. Kontrakty techniczne
+
+#### 15.4.1. Renderer: internal render scale
+
+Plik: `src/engine/renderer/Renderer.ts`
+
+Wymagania:
+
+- Renderer przechowuje osobno:
+  - rozmiar logiczny (`displayWidth`, `displayHeight`) = rozmiar CSS / viewport,
+  - rozmiar pikselowy (`pixelWidth`, `pixelHeight`) = realny rozmiar bufora canvasa.
+- `canvas.style.width/height` ustawiane na rozmiar logiczny.
+- `canvas.width/height` ustawiane na rozmiar pikselowy.
+- Skala renderu (`renderScale`) wyznaczana adaptacyjnie:
+  - gdy `width * height >= 1_500_000` -> `renderScale = 0.55`,
+  - w przeciwnym razie `renderScale = 1.0`.
+
+Kontrakt API renderera po rozszerzeniu:
+
+- `width`, `height` -> zwracają rozmiar logiczny.
+- `pixelWidth`, `pixelHeight` -> zwracają rozmiar bufora.
+- `scale` -> zwraca aktywną skalę renderu.
+
+#### 15.4.2. Camera: skala transformacji
+
+Plik: `src/engine/renderer/Camera.ts`
+
+Wymagania:
+
+- Kamera przechowuje `renderScale` (domyślnie `1`).
+- `applyTransform()` mnoży skalę transformacji i translację przez `renderScale`, tak aby zachować logiczny viewport przy niższej rozdzielczości bufora.
+- Dodane `setRenderScale(scale)` z ochroną przed wartościami <= 0.
+
+#### 15.4.3. AppShell: integracja skali
+
+Plik: `src/app/AppShell.ts`
+
+Wymagania:
+
+- Po inicjalizacji renderera: `camera.setRenderScale(renderer.scale)`.
+- W `handleResize()`:
+  - `camera.setViewport(renderer.width, renderer.height)`,
+  - `camera.setRenderScale(renderer.scale)`.
+- `BackgroundLayer` i `ParallaxLayer` regenerowane rozmiarem pikselowym (`renderer.pixelWidth`, `renderer.pixelHeight`).
+
+#### 15.4.4. GameInput: mapowanie myszy po skali
+
+Plik: `src/engine/input/GameInput.ts`
+
+Wymagania:
+
+- W `mousemove` pozycja myszy liczona z korektą relacji CSS->canvas:
+
+```typescript
+const scaleX = canvas.width / rect.width;
+const scaleY = canvas.height / rect.height;
+
+mouseScreenPos = {
+  x: (event.clientX - rect.left) * scaleX,
+  y: (event.clientY - rect.top) * scaleY,
+};
+```
+
+#### 15.4.5. WorldLayer: dirty sort
+
+Plik: `src/presentation/scene/WorldLayer.ts`
+
+Wymagania:
+
+- Dodać flagę `renderOrderDirty`.
+- Sortowanie po `computedHeight` wykonywać wyłącznie gdy `renderOrderDirty === true`.
+- `renderOrderDirty = true` po `addRenderable` i skutecznym `removeRenderable`.
+- Udostępnić metodę `markRenderOrderDirty()` do ręcznego oznaczenia zmiany porządku.
+
+#### 15.4.6. AppShell: sygnalizacja zmiany wysokości
+
+Plik: `src/app/AppShell.ts`
+
+Wymagania:
+
+- W synchronizacji encja->renderable, jeśli `computedHeight` zmieni się względem poprzedniej wartości, wywołać `worldLayer.markRenderOrderDirty()`.
+
+### 15.5. Kryteria zamknięcia rozszerzenia 5.5.1
+
+| # | Kryterium | Oczekiwany rezultat |
+|---|---|---|
+| O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_500_000 px aktywna jest skala 0.55. |
+| O2 | Mały viewport zachowuje jakość 1:1 | Dla mniejszego okna aktywna skala 1.0. |
+| O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. |
+| O4 | Brak sortowania co klatkę bez zmian | `WorldLayer` nie wykonuje `sort()` w każdej klatce przy niezmiennym porządku. |
+| O5 | Sortowanie po zmianie wysokości działa | Po zmianie `computedHeight` render order aktualizuje się poprawnie. |
+| O6 | Build i type-check przechodzą | `npm run type-check` i `npm run build` bez błędów. |
+
+---
+
+## 15. Rozszerzenie Etapu 5.5 — Stabilizacja renderu (anti-shimmer)
+
+### 15.1. Cel rozszerzenia
+
+Zmniejszyć efekt mikro-drgań (shimmer/jitter) statycznych obiektów podczas płynnego ruchu kamery,
+bez utraty płynności obiektów dynamicznych (statek gracza, NPC, pociski, rakiety, lasery).
+
+Rozszerzenie jest kompatybilne z Etapem 5.5 i nie zmienia modelu lotu.
+
+### 15.2. Decyzje architektoniczne rozszerzenia
+
+| ID | Temat | Decyzja |
+|---|---|---|
+| R5.5-S1 | Klasyfikacja obiektów | **Static snap:** obiekty z encji mających `isStatic === true`. **Dynamic subpixel:** wszystkie pozostałe (`player-ship`, `npc-ship`, przyszłe `projectile`, `missile`, itp.). |
+| R5.5-S2 | Miejsce wykonywania snappingu | Snapping wykonywany na poziomie `EntityRenderable.render()` na interpolowanej pozycji, tuż przed `ctx.translate(...)`. |
+| R5.5-S3 | Przestrzeń i krok snappingu | Snapping w world-space do pełnego piksela: `x = Math.round(x)`, `y = Math.round(y)`. |
+| R5.5-S4 | Zakres warstw | Snapping dotyczy wyłącznie renderables rysowanych przez `WorldLayer`. `BackgroundLayer` i `ParallaxLayer` pozostają bez snappingu. |
+| R5.5-S5 | Obiekty przyszłe | Domyślnie wszystkie byty dynamiczne (w tym pociski) pozostają subpixel/interpolowane. |
+| R5.5-S6 | Image smoothing | Brak globalnej zmiany `imageSmoothingEnabled` w tym rozszerzeniu. |
+| R5.5-S7 | Sterowanie runtime | Dodać dev flag `pixel-snap-static` (checkbox) domyślnie `true`. Wyłączenie flagi przywraca pełny subpixel dla wszystkich bytów. |
+
+### 15.3. Kontrakty techniczne rozszerzenia
+
+#### 15.3.1. Zasada renderowania pozycji
+
+W `EntityRenderable.render(alpha)`:
+
+1. Oblicz `interpolatedPosition` (jak dotychczas).
+2. Jeśli renderable jest statyczny **i** `pixel-snap-static === true`, zastosuj:
+  - `renderX = Math.round(interpolatedPosition.x)`
+  - `renderY = Math.round(interpolatedPosition.y)`
+3. Jeśli renderable jest dynamiczny, użyj wartości interpolowanych bez zaokrąglania.
+4. `ctx.translate(renderX, renderY)`.
+
+#### 15.3.2. Klasyfikacja static/dynamic
+
+Źródłem prawdy jest encja logiczna podczas tworzenia renderable:
+
+- `isStatic === true` -> klasa renderu `static`.
+- w przeciwnym razie -> klasa renderu `dynamic`.
+
+To dotyczy również bytów dodawanych później przez systemy gameplayowe.
+
+#### 15.3.3. Pętla i fizyka
+
+- Symulacja pozostaje float (`number`, bez kwantyzacji pozycji fizycznej).
+- Fixed update pozostaje na `60 Hz`.
+- Interpolacja (`alpha`) pozostaje aktywna dla renderu dynamicznego.
+
+### 15.4. Testy ręczne rozszerzenia
+
+| ID | Test | Oczekiwany wynik |
+|---|---|---|
+| SR1 | Włącz `pixel-snap-static=true`, leć statkiem obok stacji/planet | Statyczne obiekty są stabilniejsze wizualnie (mniej shimmeru). |
+| SR2 | Włącz `pixel-snap-static=true`, obserwuj statek gracza i ruch NPC | Obiekty dynamiczne pozostają płynne, bez schodkowania. |
+| SR3 | Włącz `pixel-snap-static=true`, obserwuj szybki ruch i rotację | Brak regresji płynności lotu. |
+| SR4 | Wyłącz `pixel-snap-static` w Dev Overlay | Wszystkie obiekty wracają do pełnego subpixel/interpolacji. |
+| SR5 | Sprawdź tło i paralaksę przy ruchu kamery | Brak regresji warstw tła/paralaksy względem Etapu 5.5. |
+| SR6 | Po dodaniu pocisków w kolejnych etapach | Pociski renderowane płynnie (bez snappingu), statyczne obiekty nadal stabilne. |
+| SR7 | `npm run type-check` + `npm run build` | 0 błędów. |
+
+### 15.5. Kryteria zamknięcia rozszerzenia
+
+| ID | Kryterium | Opis |
+|---|---|---|
+| SK1 | Stabilizacja statycznych | Statyczne byty świata nie wykazują odczuwalnego mikro-skakania przy ruchu kamery. |
+| SK2 | Płynność dynamicznych | Statek gracza, NPC i pociski pozostają subpixel/interpolowane. |
+| SK3 | Brak regresji sceny | Culling, sortowanie, tło, paralaksa i cache działają jak wcześniej. |
+| SK4 | Kontrola dev | Flaga `pixel-snap-static` działa w runtime i natychmiast zmienia zachowanie renderu. |
+| SK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. |
+
+---
+
+## 16. Rozszerzenie Etapu 5.5 — Wydajność paralaksy przy dużym viewport
+
+### 16.1. Cel rozszerzenia
+
+Zachować płynność renderu przy bardzo dużych rozmiarach okna, tak aby zwiększanie viewportu
+nie powodowało gwałtownego wzrostu kosztu generowania warstw paralaksy.
+
+Zakres rozszerzenia obejmuje wyłącznie `ParallaxLayer` i metryki diagnostyczne w Dev Overlay.
+
+### 16.2. Decyzje architektoniczne rozszerzenia
+
+| ID | Temat | Decyzja |
+|---|---|---|
+| R5.5-P1 | Zakres optymalizacji | Tylko `ParallaxLayer` (bez zmian w `BackgroundLayer`). |
+| R5.5-P2 | Zależność od viewportu | Offscreen tekstura paralaksy ma rozmiar ograniczony capem: `maxTextureWidth = 1600`, `maxTextureHeight = 900`. |
+| R5.5-P3 | Strategia jakości | Priorytet: wydajność. Dopuszczalna jest większa powtarzalność wzoru (tiling) przy bardzo dużych oknach. |
+| R5.5-P4 | Gęstość cząstek | Dodać jawny parametr `densityMultiplier` do `ParallaxSublayerConfig`. |
+| R5.5-P5 | Rola `noiseIntensity` | `noiseIntensity` pozostaje parametrem charakteru szumu (liczność + alpha), ale nie zastępuje jawnej kontroli gęstości. |
+| R5.5-P6 | Metryki płynności | Dodać do Dev Overlay metryki: `fps` i `frame ms`. Dla płynności kluczowa jest stabilność `frame ms`; `fps` jest metryką wtórną. |
+
+### 16.3. Kontrakty techniczne rozszerzenia
+
+#### 16.3.1. Rozszerzenie konfiguracji paralaksy
+
+`ParallaxSublayerConfig` dostaje nowe pole:
+
+```ts
+interface ParallaxSublayerConfig {
+  depthFactor: number;
+  tileX: boolean;
+  tileY: boolean;
+  opacity: number;
+  color: string;
+  noiseIntensity: number;
+  densityMultiplier: number;
+}
+```
+
+#### 16.3.2. Cap rozmiaru tekstury offscreen
+
+W `ParallaxLayer.render()` generowanie subwarstwy używa rozmiaru:
+
+```txt
+textureWidth  = min(viewportWidth,  1600)
+textureHeight = min(viewportHeight, 900)
+```
+
+Offset i tiling działają jak dotychczas, ale na capowanej teksturze.
+
+#### 16.3.3. Liczność cząstek
+
+W `renderSublayerToCanvas(...)`:
+
+- `dustCount` i `wispCount` są liczone od pola capowanej tekstury,
+- wynik jest mnożony przez `densityMultiplier`,
+- `noiseIntensity` nadal wpływa na liczność i przezroczystość.
+
+Przykładowa forma:
+
+```txt
+dustCount = floor((area / 900) * densityMultiplier * (0.8 + noiseIntensity))
+wispCount = floor((area / 120000) * densityMultiplier * (0.6 + noiseIntensity))
+```
+
+#### 16.3.4. Metryki Dev Overlay
+
+Dodać metryki runtime:
+
+- `fps` — wygładzony FPS z `onFrameUpdate(dt, alpha)`.
+- `frame ms` — bieżący czas klatki renderowej w milisekundach (`dt * 1000`).
+
+Metryki umieszczone w sekcji `System`.
+
+### 16.4. Testy ręczne rozszerzenia
+
+| ID | Test | Oczekiwany wynik |
+|---|---|---|
+| PR1 | Ustaw bardzo duży viewport (pełny ekran / duża rozdzielczość) | Brak gwałtownego spadku płynności względem stanu sprzed rozszerzenia. |
+| PR2 | Zmień rozmiar okna kilkukrotnie | Brak długich przycięć związanych z regeneracją paralaksy. |
+| PR3 | Obserwuj `fps` i `frame ms` w Dev Overlay | Metryki aktualizują się w czasie rzeczywistym. |
+| PR4 | Porównaj warianty presetów i `densityMultiplier` | Zmiana gęstości działa bez wpływu na logikę lotu. |
+| PR5 | Sprawdź regresję anti-shimmer | Static snapping/dynamic subpixel działają jak w sekcji 15. |
+| PR6 | `npm run type-check` + `npm run build` | 0 błędów. |
+
+### 16.5. Kryteria zamknięcia rozszerzenia
+
+| ID | Kryterium | Opis |
+|---|---|---|
+| PK1 | Cap tekstury działa | `ParallaxLayer` nie tworzy offscreenów większych niż 1600x900. |
+| PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością cząstek niezależnie od `noiseIntensity`. |
+| PK3 | Diagnostyka płynności | Dev Overlay pokazuje `fps` i `frame ms`. |
+| PK4 | Brak regresji renderu | Tło, culling, lot i panel dev działają bez regresji funkcjonalnej. |
+| PK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. |

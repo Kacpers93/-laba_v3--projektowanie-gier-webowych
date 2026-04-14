@@ -6,24 +6,39 @@ export class WorldLayer implements SceneLayer {
   readonly order = 2;
   private renderables: Renderable[] = [];
   private _lastVisibleCount = 0;
+  private renderOrderDirty = true;
 
   /** Dodaje renderable do warstwy. */
   public addRenderable(r: Renderable): void {
     this.renderables.push(r);
+    this.renderOrderDirty = true;
   }
 
   /** Usuwa renderable z warstwy. */
   public removeRenderable(entityId: string): void {
+    const prevLength = this.renderables.length;
     this.renderables = this.renderables.filter((renderable) => renderable.entityId !== entityId);
+    if (this.renderables.length !== prevLength) {
+      this.renderOrderDirty = true;
+    }
+  }
+
+  public markRenderOrderDirty(): void {
+    this.renderOrderDirty = true;
   }
 
   public update(_dt: number, _camera: Camera): void {
+    if (!this.renderOrderDirty) {
+      return;
+    }
+
     this.renderables.sort((a, b) => a.computedHeight - b.computedHeight);
+    this.renderOrderDirty = false;
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera, alpha: number): void {
-    const viewportWidth = ctx.canvas.width;
-    const viewportHeight = ctx.canvas.height;
+    const viewportWidth = camera.width;
+    const viewportHeight = camera.height;
     let visibleCount = 0;
 
     camera.applyTransform(ctx);

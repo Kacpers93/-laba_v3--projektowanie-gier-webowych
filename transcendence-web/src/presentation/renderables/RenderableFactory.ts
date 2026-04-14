@@ -6,6 +6,7 @@ import type { VisualProfile } from '@presentation/profiles/VisualProfile';
 import { EntityRenderable } from './EntityRenderable';
 
 type HeightAwareEntity = GameEntity & { computedHeight?: number };
+type StaticAwareEntity = GameEntity & { isStatic?: boolean };
 
 /**
  * Tworzy Renderable na podstawie bytu i profilu wizualnego.
@@ -23,8 +24,10 @@ export class RenderableFactory {
    */
   public create(entity: GameEntity, profile: VisualProfile): Renderable {
     const source = entity as HeightAwareEntity;
+    const staticSource = entity as StaticAwareEntity;
     const computedHeight =
       typeof source.computedHeight === 'number' ? source.computedHeight : 0;
+    const isStaticRenderable = staticSource.isStatic === true;
 
     const renderable = new EntityRenderable(
       entity.id,
@@ -32,6 +35,7 @@ export class RenderableFactory {
       this.cache,
       this.assetLoader,
       computedHeight,
+      isStaticRenderable,
     );
     renderable.syncFromEntity(entity);
     return renderable;

@@ -13,7 +13,6 @@ export class GameLoop {
   private accumulator = 0;
   private running = false;
   private paused = false;
-  private tickCounter = 0;
 
   public constructor(config: GameLoopConfig) {
     this.config = config;
@@ -81,13 +80,10 @@ export class GameLoop {
     while (this.accumulator >= this.tickDuration) {
       this.config.onFixedUpdate(this.tickDuration);
       this.accumulator -= this.tickDuration;
-      this.tickCounter += 1;
-      console.log(`[GameLoop] tick #${this.tickCounter}`);
     }
 
     const alpha = this.accumulator / this.tickDuration;
     this.config.onFrameUpdate(frameTime, alpha);
-    console.log('[GameLoop] frame');
     this.config.onFrameRender(alpha);
   };
 }

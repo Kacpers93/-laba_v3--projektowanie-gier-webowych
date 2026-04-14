@@ -3,6 +3,7 @@ import type { Vector2 } from '@/types/common';
 export class Camera {
   public position: Vector2 = { x: 0, y: 0 };
   public zoom = 1;
+  private renderScale = 1;
 
   public constructor(
     private viewportWidth: number,
@@ -12,6 +13,18 @@ export class Camera {
   public setViewport(width: number, height: number): void {
     this.viewportWidth = width;
     this.viewportHeight = height;
+  }
+
+  public get width(): number {
+    return this.viewportWidth;
+  }
+
+  public get height(): number {
+    return this.viewportHeight;
+  }
+
+  public setRenderScale(scale: number): void {
+    this.renderScale = scale > 0 ? scale : 1;
   }
 
   public follow(target: Vector2): void {
@@ -33,13 +46,15 @@ export class Camera {
   }
 
   public applyTransform(ctx: CanvasRenderingContext2D): void {
+    const scaledZoom = this.zoom * this.renderScale;
+
     ctx.setTransform(
-      this.zoom,
+      scaledZoom,
       0,
       0,
-      this.zoom,
-      this.viewportWidth / 2 - this.position.x * this.zoom,
-      this.viewportHeight / 2 - this.position.y * this.zoom,
+      scaledZoom,
+      (this.viewportWidth / 2 - this.position.x * this.zoom) * this.renderScale,
+      (this.viewportHeight / 2 - this.position.y * this.zoom) * this.renderScale,
     );
   }
 }

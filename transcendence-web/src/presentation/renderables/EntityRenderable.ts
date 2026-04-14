@@ -9,6 +9,8 @@ import type { VisualProfile } from '@presentation/profiles/VisualProfile';
  * Obsluguje interpolacje, culling i deleguje rysowanie do VisualProfile.
  */
 export class EntityRenderable implements Renderable {
+  public static pixelSnapStatic = true;
+
   public position: Vector2;
   public previousPosition: Vector2;
   public rotation = 0;
@@ -23,6 +25,7 @@ export class EntityRenderable implements Renderable {
     private readonly cache: OffscreenCache,
     private readonly assetLoader?: AssetLoader,
     computedHeight: number = 0,
+    private readonly isStaticRenderable: boolean = false,
   ) {
     this.position = { x: 0, y: 0 };
     this.previousPosition = { x: 0, y: 0 };
@@ -66,10 +69,17 @@ export class EntityRenderable implements Renderable {
     }
 
     const position = this.getInterpolatedPosition(alpha);
+    const renderPosition =
+      this.isStaticRenderable && EntityRenderable.pixelSnapStatic
+        ? {
+            x: Math.round(position.x),
+            y: Math.round(position.y),
+          }
+        : position;
     const rotation = this.getInterpolatedRotation(alpha);
 
     ctx.save();
-    ctx.translate(position.x, position.y);
+    ctx.translate(renderPosition.x, renderPosition.y);
     ctx.rotate(rotation);
 
     const source = this.profile.source;

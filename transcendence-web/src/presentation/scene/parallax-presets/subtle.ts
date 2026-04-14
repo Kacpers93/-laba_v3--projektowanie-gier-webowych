@@ -8,6 +8,7 @@ export const PARALLAX_SUBLAYERS_SUBTLE: ParallaxSublayerConfig[] = [
     opacity: 0.2,
     color: 'rgba(140, 165, 200, 1)',
     noiseIntensity: 0.5,
+    densityMultiplier: 1,
   },
   {
     depthFactor: 0.15,
@@ -16,6 +17,7 @@ export const PARALLAX_SUBLAYERS_SUBTLE: ParallaxSublayerConfig[] = [
     opacity: 0.16,
     color: 'rgba(115, 150, 185, 1)',
     noiseIntensity: 0.45,
+    densityMultiplier: 1,
   },
   {
     depthFactor: 0.3,
@@ -24,5 +26,6 @@ export const PARALLAX_SUBLAYERS_SUBTLE: ParallaxSublayerConfig[] = [
     opacity: 0.12,
     color: 'rgba(175, 150, 120, 1)',
     noiseIntensity: 0.4,
+    densityMultiplier: 1,
   },
 ];

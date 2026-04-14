@@ -9,6 +9,9 @@ export interface ParallaxSublayerConfig {
   opacity: number;
   color: string;
   noiseIntensity: number;
+  densityMultiplier: number;
+  particleMinSize?: number;
+  particleMaxSize?: number;
 }
 
 interface Sublayer {
@@ -17,6 +20,9 @@ interface Sublayer {
   offsetX: number;
   offsetY: number;
 }
+
+const PARALLAX_MAX_TEXTURE_WIDTH = 1600;
+const PARALLAX_MAX_TEXTURE_HEIGHT = 900;
 
 export class ParallaxLayer implements SceneLayer {
   readonly order = 1;
@@ -47,12 +53,19 @@ export class ParallaxLayer implements SceneLayer {
 
   public render(ctx: CanvasRenderingContext2D, _camera: Camera, _alpha: number): void {
     this.sublayers.forEach((sublayer) => {
+      const textureDimensions = this.getTextureDimensions();
       const canvas = this.cache.getOrCreate(
         sublayer.cacheKey,
-        this.width,
-        this.height,
+        textureDimensions.width,
+        textureDimensions.height,
         (offscreenCtx) => {
-          this.renderSublayerToCanvas(offscreenCtx, sublayer.config, this.width, this.height);
+          this.renderSublayerToCanvas(
+            offscreenCtx,
+            sublayer.config,
+            textureDimensions.width,
+            textureDimensions.height,
+            sublayer.cacheKey,
+          );
         },
       );
 
@@ -81,6 +94,10 @@ export class ParallaxLayer implements SceneLayer {
   }
 
   public regenerate(width: number, height: number): void {
+    if (this.width === width && this.height === height) {
+      return;
+    }
+
     this.width = width;
     this.height = height;
     this.sublayers.forEach((s) => this.cache.invalidate(s.cacheKey));
@@ -91,15 +108,29 @@ export class ParallaxLayer implements SceneLayer {
     config: ParallaxSublayerConfig,
     width: number,
     height: number,
+    seedKey: string,
   ): void {
     ctx.clearRect(0, 0, width, height);
+    const rng = this.createDeterministicRng(seedKey);
 
-    const dustCount = Math.floor((width * height) / 900 * (0.8 + config.noiseIntensity));
+    const area = width * height;
+    const densityMultiplier = Math.max(0, config.densityMultiplier);
+    const particleMinSize =
+      typeof config.particleMinSize === 'number' ? Math.max(0.05, config.particleMinSize) : 0.9;
+    const particleMaxSize =
+      typeof config.particleMaxSize === 'number'
+        ? Math.max(particleMinSize, config.particleMaxSize)
+        : 4.3;
+    const particleSizeRange = particleMaxSize - particleMinSize;
+
+    const dustCount = Math.floor(
+      (area / 900) * densityMultiplier * (0.8 + config.noiseIntensity),
+    );
     for (let i = 0; i < dustCount; i++) {
-      const x = Math.random() * width;
-      const y = Math.random() * height;
-      const size = Math.random() * 3.4 + 0.9;
-      const alpha = Math.min(0.85, (Math.random() * 0.28 + 0.12) * config.noiseIntensity);
+      const x = rng() * width;
+      const y = rng() * height;
+      const size = particleMinSize + rng() * particleSizeRange;
+      const alpha = Math.min(0.85, (rng() * 0.28 + 0.12) * config.noiseIntensity);
 
       ctx.fillStyle = this.withAlpha(config.color, alpha);
 
@@ -118,37 +149,13 @@ export class ParallaxLayer implements SceneLayer {
       }
     }
 
-    const wispCount = Math.floor((width * height) / 120000 * (0.6 + config.noiseIntensity));
-    for (let i = 0; i < wispCount; i++) {
-      const x = Math.random() * width;
-      const y = Math.random() * height;
-      const radiusX = Math.random() * 20 + 10;
-      const radiusY = Math.random() * 8 + 4;
-      const rotation = Math.random() * Math.PI;
-      const alpha = Math.min(0.45, (Math.random() * 0.16 + 0.06) * config.noiseIntensity);
+  }
 
-      ctx.fillStyle = this.withAlpha(config.color, alpha);
-
-      for (const offsetX of [-width, 0, width]) {
-        for (const offsetY of [-height, 0, height]) {
-          const px = x + offsetX;
-          const py = y + offsetY;
-          if (
-            px + radiusX < 0 ||
-            px - radiusX > width ||
-            py + radiusX < 0 ||
-            py - radiusX > height
-          ) {
-            continue;
-          }
-
-          ctx.beginPath();
-          ctx.ellipse(px, py, radiusX, radiusY, rotation, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
+  private getTextureDimensions(): { width: number; height: number } {
+    return {
+      width: Math.max(1, Math.min(Math.floor(this.width), PARALLAX_MAX_TEXTURE_WIDTH)),
+      height: Math.max(1, Math.min(Math.floor(this.height), PARALLAX_MAX_TEXTURE_HEIGHT)),
+    };
   }
 
   private wrapOffset(offset: number, size: number): number {
@@ -171,5 +178,28 @@ export class ParallaxLayer implements SceneLayer {
     const blue = Number(match[3]);
 
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  }
+
+  private createDeterministicRng(seedKey: string): () => number {
+    let seed = this.hashString(seedKey);
+
+    return () => {
+      seed += 0x6d2b79f5;
+      let t = seed;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  private hashString(value: string): number {
+    let hash = 2166136261;
+
+    for (let i = 0; i < value.length; i++) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return hash >>> 0;
   }
 }

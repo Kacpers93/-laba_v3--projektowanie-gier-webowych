@@ -14,7 +14,7 @@ import type { AABB } from '@physics/types';
 import { OffscreenCache } from '@presentation/cache/OffscreenCache';
 import { VisualProfileRegistry } from '@presentation/profiles';
 import type { VisualProfile } from '@presentation/profiles';
-import { RenderableFactory } from '@presentation/renderables';
+import { EntityRenderable, RenderableFactory } from '@presentation/renderables';
 import { BackgroundLayer } from '@presentation/scene/BackgroundLayer';
 import { DebugLayer } from '@presentation/scene/DebugLayer';
 import { EffectsLayer } from '@presentation/scene/EffectsLayer';
@@ -45,6 +45,10 @@ const DEV_SPRITE_TEST_START_Y = -90;
 const SYSTEM_SEED_URL = '/world/systems/sol-001.json';
 const DEV_SPAWN_DEFAULT_ORBIT_RADIUS = 300;
 const DEV_SPAWN_DEFAULT_ORBIT_PHASE = 0;
+const CAMERA_ZOOM_MIN = 0.5;
+const CAMERA_ZOOM_MAX = 2;
+const CAMERA_ZOOM_STEP = 0.015;
+const CAMERA_ZOOM_LERP_RATE = 8;
 
 type DevOverlaySelectOption = {
   value: string;
@@ -164,7 +168,11 @@ export class AppShell {
   private devFlagsSection: DevOverlaySectionLike | null = null;
   private playerShipEntity: PlayerShipEntity | null = null;
   private devFlightMode = false;
+  private pixelSnapStatic = true;
   private devSpawnCounter = 0;
+  private smoothedFps = 0;
+  private frameTimeMs = 0;
+  private targetCameraZoom = 1;
 
   private started = false;
 
@@ -184,6 +192,8 @@ export class AppShell {
 
     this.renderer = new Renderer(this.canvas);
     this.camera = new Camera(this.renderer.width, this.renderer.height);
+    this.camera.setRenderScale(this.renderer.scale);
+    this.targetCameraZoom = this.camera.zoom;
     this.audioManager = new AudioManager();
     this.inputModeManager = new InputModeManager();
     this.gameInput = new GameInput(this.canvas, this.inputModeManager);
@@ -196,10 +206,11 @@ export class AppShell {
     this.visualProfileRegistry = new VisualProfileRegistry();
     this.assetLoader = new AssetLoader();
     this.renderableFactory = new RenderableFactory(this.cache, this.assetLoader);
+    EntityRenderable.pixelSnapStatic = this.pixelSnapStatic;
 
     this.sceneRenderer = new SceneRenderer();
 
-    this.backgroundLayer = new BackgroundLayer(this.cache, this.renderer.width, this.renderer.height, {
+    this.backgroundLayer = new BackgroundLayer(this.cache, this.renderer.pixelWidth, this.renderer.pixelHeight, {
       starCount: 400,
       minBrightness: 0.3,
       maxBrightness: 1.0,
@@ -210,8 +221,8 @@ export class AppShell {
 
     this.parallaxLayer = new ParallaxLayer(
       this.cache,
-      this.renderer.width,
-      this.renderer.height,
+      this.renderer.pixelWidth,
+      this.renderer.pixelHeight,
       ACTIVE_PARALLAX_SUBLAYERS,
     );
     this.sceneRenderer.addLayer(this.parallaxLayer);
@@ -296,6 +307,12 @@ export class AppShell {
 
           return `${this.lastSystemLoadResult.loadTimeMs} ms`;
         });
+        systemSection.registerMetric('fps', 'fps', () =>
+          this.smoothedFps > 0 ? this.smoothedFps.toFixed(1) : '-'
+        );
+        systemSection.registerMetric('frame-ms', 'frame ms', () =>
+          this.frameTimeMs > 0 ? `${this.frameTimeMs.toFixed(2)} ms` : '-'
+        );
         systemSection.registerMetric(
           'warnings',
           'warnings',
@@ -383,6 +400,16 @@ export class AppShell {
             this.devFlightMode = enabled && this.playerShipEntity !== null;
           },
         );
+        devFlagsSection.registerControl(
+          'pixel-snap-static',
+          'Pixel snap static',
+          'checkbox',
+          this.pixelSnapStatic,
+          (enabled: boolean) => {
+            this.pixelSnapStatic = enabled;
+            EntityRenderable.pixelSnapStatic = enabled;
+          },
+        );
 
         this.registerDevSpawnSection(overlay);
       });
@@ -391,7 +418,7 @@ export class AppShell {
     }
 
     this.gameLoop = new GameLoop({
-      tickRate: 30,
+      tickRate: 60,
       onFixedUpdate: this.onFixedUpdate,
       onFrameUpdate: this.onFrameUpdate,
       onFrameRender: this.onFrameRender,
@@ -402,6 +429,7 @@ export class AppShell {
     this.bindAudioInit();
 
     window.addEventListener('resize', this.handleResize);
+    this.canvas.addEventListener('wheel', this.handleCameraZoomWheel, { passive: false });
   }
 
   public async start(): Promise<void> {
@@ -464,6 +492,7 @@ export class AppShell {
       this.devOverlay?.unmount();
     }
     window.removeEventListener('resize', this.handleResize);
+    this.canvas.removeEventListener('wheel', this.handleCameraZoomWheel);
   }
 
   private readonly onFixedUpdate = (dt: number): void => {
@@ -512,7 +541,6 @@ export class AppShell {
     }
 
     if (this.devFlightMode && this.playerShipEntity) {
-      this.camera.follow(this.playerShipEntity.position);
       return;
     }
 
@@ -528,13 +556,39 @@ export class AppShell {
         x: this.camera.position.x + moveX * CAMERA_SPEED * dt,
         y: this.camera.position.y + moveY * CAMERA_SPEED * dt,
       };
-      console.log(
-        `[Camera] position=(${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}) zoom=${this.camera.zoom.toFixed(2)}`,
-      );
     }
   };
 
-  private readonly onFrameUpdate = (dt: number, _alpha: number): void => {
+  private readonly onFrameUpdate = (dt: number, alpha: number): void => {
+    this.frameTimeMs = dt * 1000;
+    if (dt > 0) {
+      const instantFps = 1 / dt;
+      this.smoothedFps =
+        this.smoothedFps === 0
+          ? instantFps
+          : this.smoothedFps * 0.9 + instantFps * 0.1;
+    }
+
+            this.updateCameraZoom(dt);
+
+    if (
+      this.inputModeManager.mode === 'game' &&
+      this.devFlightMode &&
+      this.playerShipEntity
+    ) {
+      const interpolatedPlayerPosition = {
+        x:
+          this.playerShipEntity.previousPosition.x +
+          (this.playerShipEntity.position.x - this.playerShipEntity.previousPosition.x) * alpha,
+        y:
+          this.playerShipEntity.previousPosition.y +
+          (this.playerShipEntity.position.y - this.playerShipEntity.previousPosition.y) * alpha,
+      };
+      this.camera.follow(interpolatedPlayerPosition);
+    }
+
+    let renderOrderDirty = false;
+
     this.entityManager.getAll().forEach((entity) => {
       const renderable = this.renderablesByEntityId.get(entity.id);
       if (!renderable) {
@@ -548,9 +602,16 @@ export class AppShell {
 
       const maybeHeightAwareEntity = entity as GameEntity & { computedHeight?: number };
       if (typeof maybeHeightAwareEntity.computedHeight === 'number') {
-        renderable.computedHeight = maybeHeightAwareEntity.computedHeight;
+        if (renderable.computedHeight !== maybeHeightAwareEntity.computedHeight) {
+          renderable.computedHeight = maybeHeightAwareEntity.computedHeight;
+          renderOrderDirty = true;
+        }
       }
     });
+
+    if (renderOrderDirty) {
+      this.worldLayer.markRenderOrderDirty();
+    }
 
     this.sceneRenderer.update(dt, this.camera);
 
@@ -574,9 +635,27 @@ export class AppShell {
   private readonly handleResize = (): void => {
     this.renderer.resize(window.innerWidth, window.innerHeight);
     this.camera.setViewport(this.renderer.width, this.renderer.height);
-    this.backgroundLayer.regenerate(this.renderer.width, this.renderer.height);
-    this.parallaxLayer.regenerate(this.renderer.width, this.renderer.height);
+    this.camera.setRenderScale(this.renderer.scale);
+    this.backgroundLayer.regenerate(this.renderer.pixelWidth, this.renderer.pixelHeight);
+    this.parallaxLayer.regenerate(this.renderer.pixelWidth, this.renderer.pixelHeight);
   };
+
+  private readonly handleCameraZoomWheel = (event: WheelEvent): void => {
+    event.preventDefault();
+    const step = event.deltaY > 0 ? -CAMERA_ZOOM_STEP : CAMERA_ZOOM_STEP;
+    this.targetCameraZoom = this.clampCameraZoom(this.targetCameraZoom + step);
+  };
+
+  private updateCameraZoom(dt: number): void {
+    const lerpFactor = Math.min(1, dt * CAMERA_ZOOM_LERP_RATE);
+    this.camera.zoom = this.clampCameraZoom(
+      this.camera.zoom + (this.targetCameraZoom - this.camera.zoom) * lerpFactor,
+    );
+  }
+
+  private clampCameraZoom(value: number): number {
+    return Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, value));
+  }
 
   private bindInputModeLogs(): void {
     this.inputModeManager.onModeChanged((mode) => {
