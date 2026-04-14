@@ -104,12 +104,9 @@ export class GameInput {
 
   private handleMouseMove = (event: MouseEvent): void => {
     const rect = this.canvas.getBoundingClientRect();
-    const scaleX = rect.width > 0 ? this.canvas.width / rect.width : 1;
-    const scaleY = rect.height > 0 ? this.canvas.height / rect.height : 1;
-
     this.mouseScreenPos = {
-      x: (event.clientX - rect.left) * scaleX,
-      y: (event.clientY - rect.top) * scaleY,
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     };
   };
 }

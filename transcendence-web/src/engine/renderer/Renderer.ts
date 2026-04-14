@@ -1,6 +1,6 @@
 const LARGE_VIEWPORT_ENTER_AREA_THRESHOLD = 1_600_000;
 const LARGE_VIEWPORT_EXIT_AREA_THRESHOLD = 1_350_000;
-const LARGE_VIEWPORT_RENDER_SCALE = 0.55;
+const LARGE_VIEWPORT_RENDER_SCALE = 0.65;
 
 export class Renderer {
   private readonly context: CanvasRenderingContext2D;

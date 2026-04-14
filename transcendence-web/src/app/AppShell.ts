@@ -157,8 +157,8 @@ export class AppShell {
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
   private readonly camera: Camera;
-  private readonly gameInput: GameInput;
-  private readonly uiInput: UIInput;
+  private gameInput!: GameInput;
+  private uiInput!: UIInput;
   private devOverlayUpdateElapsed = 0;
   private lastSystemLoadResult: SystemLoadResult | null = null;
   private currentSystemId = '-';
@@ -173,6 +173,10 @@ export class AppShell {
   private smoothedFps = 0;
   private frameTimeMs = 0;
   private targetCameraZoom = 1;
+  private inputControllersActive = false;
+  private runtimeListenersBound = false;
+  private devOverlayMounted = false;
+  private devOverlayMountRequested = false;
 
   private started = false;
 
@@ -196,10 +200,7 @@ export class AppShell {
     this.targetCameraZoom = this.camera.zoom;
     this.audioManager = new AudioManager();
     this.inputModeManager = new InputModeManager();
-    this.gameInput = new GameInput(this.canvas, this.inputModeManager);
-    this.uiInput = new UIInput(this.inputModeManager);
-
-    this.gameInput.setCamera(this.camera);
+    this.initializeInputControllers();
 
     this.cache = new OffscreenCache();
     this.entityManager = new EntityManager();
@@ -248,7 +249,10 @@ export class AppShell {
       void import('@dev/DevOverlayPanel').then(({ DevOverlayPanel }) => {
         const overlay = new DevOverlayPanel();
         this.devOverlay = overlay;
-        overlay.mount(document.body);
+        if (this.devOverlayMountRequested && !this.devOverlayMounted) {
+          overlay.mount(document.body);
+          this.devOverlayMounted = true;
+        }
 
         const entitiesSection = overlay.registerSection('entities', 'Entities');
         entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
@@ -413,8 +417,6 @@ export class AppShell {
 
         this.registerDevSpawnSection(overlay);
       });
-
-      window.addEventListener('keydown', this.handleDevOverlayToggleKeydown);
     }
 
     this.gameLoop = new GameLoop({
@@ -425,16 +427,22 @@ export class AppShell {
     });
 
     this.bindInputModeLogs();
-    this.bindInputActions();
     this.bindAudioInit();
-
-    window.addEventListener('resize', this.handleResize);
-    this.canvas.addEventListener('wheel', this.handleCameraZoomWheel, { passive: false });
   }
 
   public async start(): Promise<void> {
     if (this.started) {
       return;
+    }
+
+    if (!this.inputControllersActive) {
+      this.initializeInputControllers();
+    }
+
+    this.bindRuntimeListeners();
+    if (import.meta.env.DEV) {
+      this.devOverlayMountRequested = true;
+      this.mountDevOverlayIfReady();
     }
 
     this.started = true;
@@ -487,12 +495,67 @@ export class AppShell {
     this.gameLoop.stop();
     this.gameInput.destroy();
     this.uiInput.destroy();
+    this.inputControllersActive = false;
+    this.unbindRuntimeListeners();
+
+    if (import.meta.env.DEV) {
+      this.devOverlayMountRequested = false;
+      this.unmountDevOverlayIfMounted();
+    }
+  }
+
+  private initializeInputControllers(): void {
+    this.gameInput = new GameInput(this.canvas, this.inputModeManager);
+    this.uiInput = new UIInput(this.inputModeManager);
+    this.gameInput.setCamera(this.camera);
+    this.bindInputActions();
+    this.inputControllersActive = true;
+  }
+
+  private bindRuntimeListeners(): void {
+    if (this.runtimeListenersBound) {
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      window.addEventListener('keydown', this.handleDevOverlayToggleKeydown);
+    }
+
+    window.addEventListener('resize', this.handleResize);
+    this.canvas.addEventListener('wheel', this.handleCameraZoomWheel, { passive: false });
+    this.runtimeListenersBound = true;
+  }
+
+  private unbindRuntimeListeners(): void {
+    if (!this.runtimeListenersBound) {
+      return;
+    }
+
     if (import.meta.env.DEV) {
       window.removeEventListener('keydown', this.handleDevOverlayToggleKeydown);
-      this.devOverlay?.unmount();
     }
+
     window.removeEventListener('resize', this.handleResize);
     this.canvas.removeEventListener('wheel', this.handleCameraZoomWheel);
+    this.runtimeListenersBound = false;
+  }
+
+  private mountDevOverlayIfReady(): void {
+    if (!this.devOverlay || this.devOverlayMounted) {
+      return;
+    }
+
+    this.devOverlay.mount(document.body);
+    this.devOverlayMounted = true;
+  }
+
+  private unmountDevOverlayIfMounted(): void {
+    if (!this.devOverlay || !this.devOverlayMounted) {
+      return;
+    }
+
+    this.devOverlay.unmount();
+    this.devOverlayMounted = false;
   }
 
   private readonly onFixedUpdate = (dt: number): void => {

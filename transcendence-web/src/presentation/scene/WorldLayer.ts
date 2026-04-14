@@ -37,8 +37,12 @@ export class WorldLayer implements SceneLayer {
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera, alpha: number): void {
-    const viewportWidth = camera.width;
-    const viewportHeight = camera.height;
+    const halfWorldWidth = camera.width / (2 * camera.zoom);
+    const halfWorldHeight = camera.height / (2 * camera.zoom);
+    const minWorldX = camera.position.x - halfWorldWidth;
+    const maxWorldX = camera.position.x + halfWorldWidth;
+    const minWorldY = camera.position.y - halfWorldHeight;
+    const maxWorldY = camera.position.y + halfWorldHeight;
     let visibleCount = 0;
 
     camera.applyTransform(ctx);
@@ -57,14 +61,13 @@ export class WorldLayer implements SceneLayer {
           (renderable.position.y - renderable.previousPosition.y) * alpha,
       };
 
-      const screenPos = camera.worldToScreen(interpolatedPos);
       const cullRadius = renderable.cullRadius;
 
       const visible =
-        screenPos.x + cullRadius > 0 &&
-        screenPos.x - cullRadius < viewportWidth &&
-        screenPos.y + cullRadius > 0 &&
-        screenPos.y - cullRadius < viewportHeight;
+        interpolatedPos.x + cullRadius > minWorldX &&
+        interpolatedPos.x - cullRadius < maxWorldX &&
+        interpolatedPos.y + cullRadius > minWorldY &&
+        interpolatedPos.y - cullRadius < maxWorldY;
 
       if (!visible) {
         return;
