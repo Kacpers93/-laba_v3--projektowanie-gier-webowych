@@ -68,13 +68,17 @@ Kryteria zamknięcia Etapu 4: `10_etap4-specyfikacja.md`, sekcja 11.
 Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
 
 ## Etap 5.5
-`engine/input/`, `systems/flight/`, `dev/` (rozszerzenie)
+`engine/input/`, `systems/flight/`, `dev/` (rozszerzenie), `engine/renderer/`, `presentation/scene/`, `presentation/renderables/`
 - wdrożenie Flight Model (fizyka Newtonowska, thrustery, obrót, Flight Assist),
 - wstępny model przemieszczania gracza do testowania,
 - dev mode toggle — gdy aktywny, powrót do swobodnego przesuwania po planszy bez Flight Model,
-- publiczne gettery statystyk lotu w ship (velocity, acceleration, heading).
+- publiczne gettery statystyk lotu w ship (velocity, acceleration, heading),
+- rozszerzenie 5.5.1: adaptacyjna skala renderu i dirty sort (`WorldLayer`),
+- rozszerzenie 5.5.2: anti-shimmer dla obiektów statycznych (`pixel-snap-static`),
+- rozszerzenie 5.5.3: optymalizacja paralaksy dla dużego viewportu (cap tekstur, `densityMultiplier`),
+- metryki płynności runtime w Dev Overlay (`fps`, `frame ms`).
 
-Kryteria zamknięcia Etapu 5.5: `13_etap5.5-specyfikacja.md`, sekcja 12.
+Kryteria zamknięcia Etapu 5.5: `13_etap5.5-specyfikacja.md`, sekcje 12, 15, 16 i 17.
 
 ## Etap 6
 `ui/`

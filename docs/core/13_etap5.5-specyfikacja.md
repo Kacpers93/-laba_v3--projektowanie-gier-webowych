@@ -6,7 +6,7 @@
 
 | Źródło | Status | Uwagi |
 |---|---|---|
-| `05_plan-prac.md` | ✅ Odczytane | Etap 5.5 zdefiniowany w liniach 70–77, status: „planowany" |
+| `05_plan-prac.md` | ✅ Odczytane | Etap 5.5 zdefiniowany w liniach 70–77, status: „wdrożony" |
 | `11_etap5-specyfikacja.md` | ✅ Odczytane | Etap 5 wdrożony, testy ręczne przeszły (adnotacje w sekcji 13) |
 | `12_etap5-podstawa-specyfikacji.md` | ✅ Odczytane | Szkic wstępny, sformalizowany przez 11_etap5 |
 | `00_input-and-keybindings.md` | ✅ Odczytane | Pełna architektura input: akcje, tryby, moduły |
@@ -16,12 +16,17 @@
 | `03_reactor-system.md` | ✅ Odczytane | System reaktora — kontekst, poza zakresem 5.5 |
 | `04_ship-capture.md` | ✅ Odczytane | Przejęcie statku — kontekst, poza zakresem 5.5 |
 | `05_etap7-world-architecture.md` | ✅ Odczytane | Wielosystemowość, sektory — kontekst późniejszy |
-| `AppShell.ts` | ✅ Odczytane (969 linii) | Orkiestracja runtime, pętla gry, kamera strzałkami, dev overlay |
-| `GameInput.ts` | ✅ Odczytane (108 linii) | Surowy `event.key`, brak systemu akcji z dokumentacji |
+| `AppShell.ts` | ✅ Odczytane | Orkiestracja runtime, integracja flight mode/free camera, dev toggles, metryki `fps` i `frame ms` |
+| `GameInput.ts` | ✅ Odczytane | Surowy `event.key`, akcja `toggle-flight-assist`, śledzenie `mouseWorldPos` |
 | `InputModeManager.ts` | ✅ Odczytane (31 linii) | Tryby: `game`, `ui`, `locked` |
 | `UIInput.ts` | ✅ Odczytane (66 linii) | Nawigacja UI strzałkami, Enter, Escape |
 | `SystemSeedLoader.ts` | ✅ Odczytane (387 linii) | Loader seeda, pipeline instancjonowania |
 | `WorldEntity.ts` | ✅ Odczytane (41 linii) | Klasa encji świata — brak `update()`, brak fizyki |
+| `Renderer.ts` | ✅ Odczytane | Adaptacyjny `renderScale` z progami wejścia/wyjścia (histereza), osobne rozmiary logiczne i pikselowe |
+| `Camera.ts` | ✅ Odczytane | `setRenderScale()` i transformacja uwzględniająca skalę renderu |
+| `WorldLayer.ts` | ✅ Odczytane | `renderOrderDirty`, sortowanie tylko przy zmianie porządku |
+| `EntityRenderable.ts` | ✅ Odczytane | `pixelSnapStatic` dla obiektów statycznych |
+| `ParallaxLayer.ts` | ✅ Odczytane | Cap tekstur 1600x900, `densityMultiplier`, generacja cząstek `dust` |
 | `seedTypes.ts` | ✅ Odczytane (151 linii) | Typy seeda, `RuntimeSeedObjectType` |
 | `sol-001.json` | ✅ Odczytane (139 linii) | Seed startowy, `player-ship-01` istnieje |
 
@@ -738,7 +743,7 @@ src/
 
 | Dokument | Zmiana |
 |---|---|
-| `05_plan-prac.md` | Zmienić status: „Etap 5.5: planowany" → „Etap 5.5: wdrożony". Dodać link: „Kryteria zamknięcia Etapu 5.5: `13_etap5.5-specyfikacja.md`, sekcja 12." |
+| `05_plan-prac.md` | Status Etapu 5.5 ustawiony na „wdrożony". Kryteria zamknięcia odwołane do `13_etap5.5-specyfikacja.md` (sekcja 12 + sekcje rozszerzeń). |
 | `11_etap5-specyfikacja.md` | Bez zmian. |
 | `01_flight-model.md` | Bez zmian — dokument jest definicją docelowego modelu. Etap 5.5 wdraża podzbiór (rear/front + obrót + FA + soft drag). |
 
@@ -748,7 +753,7 @@ src/
 
 | # | Pytanie | Odpowiedź |
 |---|---|---|
-| 1 | Czy wszystkie pliki wejściowe zostały przeczytane? | ✅ Tak — 10 dokumentów + 8 plików źródłowych. |
+| 1 | Czy wszystkie pliki wejściowe zostały przeczytane? | ✅ Tak — dokumenty etapowe + kluczowe pliki runtime (`AppShell`, `GameInput`, `Renderer`, `Camera`, `WorldLayer`, `EntityRenderable`, `ParallaxLayer`, `PlayerShipEntity`, `flightModel`). |
 | 2 | Czy sprzeczności zostały wykryte i rozstrzygnięte? | ✅ Tak — 5 sprzeczności (S1–S5) z jednoznacznymi decyzjami. |
 | 3 | Czy zakres jest minimalny i zamknięty? | ✅ Tak — rear/front thruster, obrót, FA, soft drag, kamera follow, dev toggle. |
 | 4 | Czy zakres nie miesza się z Etapem 7/8? | ✅ Tak — brak systemu masy, reaktora, slotów, kolizji, wielosystemowości. |
@@ -770,7 +775,7 @@ Podnieść stabilność FPS dla dużych rozmiarów okna (ok. 2119x1160) bez zmia
 ### 15.2. Zakres rozszerzenia (wchodzi)
 
 1. Adaptacyjna skala renderu canvasa (internal render scale) zależna od powierzchni viewportu.
-2. Korekta mapowania pozycji myszy do przestrzeni canvasa przy włączonej skali renderu.
+2. Utrzymanie poprawnego mapowania pozycji myszy do world-space przy aktywnej skali renderu.
 3. Sortowanie renderables w `WorldLayer` tylko przy zmianie porządku (`dirty sort`) zamiast sortowania co klatkę.
 
 ### 15.3. Poza zakresem rozszerzenia
@@ -792,9 +797,10 @@ Wymagania:
   - rozmiar pikselowy (`pixelWidth`, `pixelHeight`) = realny rozmiar bufora canvasa.
 - `canvas.style.width/height` ustawiane na rozmiar logiczny.
 - `canvas.width/height` ustawiane na rozmiar pikselowy.
-- Skala renderu (`renderScale`) wyznaczana adaptacyjnie:
-  - gdy `width * height >= 1_500_000` -> `renderScale = 0.55`,
-  - w przeciwnym razie `renderScale = 1.0`.
+- Skala renderu (`renderScale`) wyznaczana adaptacyjnie z histerezą:
+  - gdy aktualnie `renderScale === 1` i `width * height >= 1_600_000` -> `renderScale = 0.65`,
+  - gdy aktualnie `renderScale < 1` i `width * height <= 1_350_000` -> `renderScale = 1.0`,
+  - w pozostałych przypadkach utrzymanie bieżącej skali.
 
 Kontrakt API renderera po rozszerzeniu:
 
@@ -830,17 +836,16 @@ Plik: `src/engine/input/GameInput.ts`
 
 Wymagania:
 
-- W `mousemove` pozycja myszy liczona z korektą relacji CSS->canvas:
+- W `mousemove` pozycja myszy liczona w przestrzeni logicznej viewportu:
 
 ```typescript
-const scaleX = canvas.width / rect.width;
-const scaleY = canvas.height / rect.height;
-
 mouseScreenPos = {
-  x: (event.clientX - rect.left) * scaleX,
-  y: (event.clientY - rect.top) * scaleY,
+  x: event.clientX - rect.left,
+  y: event.clientY - rect.top,
 };
 ```
+
+- Aktualizacja `mouseWorldPos` odbywa się przez `camera.screenToWorld(mouseScreenPos)` w `update()`.
 
 #### 15.4.5. WorldLayer: dirty sort
 
@@ -865,8 +870,8 @@ Wymagania:
 
 | # | Kryterium | Oczekiwany rezultat |
 |---|---|---|
-| O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_500_000 px aktywna jest skala 0.55. |
-| O2 | Mały viewport zachowuje jakość 1:1 | Dla mniejszego okna aktywna skala 1.0. |
+| O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_600_000 px aktywowana jest skala 0.65 (wejście w tryb large viewport). |
+| O2 | Powrót do jakości 1:1 działa stabilnie | Po zmniejszeniu powierzchni do <= 1_350_000 px skala wraca do 1.0 (próg wyjścia). |
 | O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. |
 | O4 | Brak sortowania co klatkę bez zmian | `WorldLayer` nie wykonuje `sort()` w każdej klatce przy niezmiennym porządku. |
 | O5 | Sortowanie po zmianie wysokości działa | Po zmianie `computedHeight` render order aktualizuje się poprawnie. |
@@ -874,16 +879,16 @@ Wymagania:
 
 ---
 
-## 15. Rozszerzenie Etapu 5.5 — Stabilizacja renderu (anti-shimmer)
+## 16. Rozszerzenie Etapu 5.5 — Stabilizacja renderu (anti-shimmer)
 
-### 15.1. Cel rozszerzenia
+### 16.1. Cel rozszerzenia
 
 Zmniejszyć efekt mikro-drgań (shimmer/jitter) statycznych obiektów podczas płynnego ruchu kamery,
 bez utraty płynności obiektów dynamicznych (statek gracza, NPC, pociski, rakiety, lasery).
 
 Rozszerzenie jest kompatybilne z Etapem 5.5 i nie zmienia modelu lotu.
 
-### 15.2. Decyzje architektoniczne rozszerzenia
+### 16.2. Decyzje architektoniczne rozszerzenia
 
 | ID | Temat | Decyzja |
 |---|---|---|
@@ -895,9 +900,9 @@ Rozszerzenie jest kompatybilne z Etapem 5.5 i nie zmienia modelu lotu.
 | R5.5-S6 | Image smoothing | Brak globalnej zmiany `imageSmoothingEnabled` w tym rozszerzeniu. |
 | R5.5-S7 | Sterowanie runtime | Dodać dev flag `pixel-snap-static` (checkbox) domyślnie `true`. Wyłączenie flagi przywraca pełny subpixel dla wszystkich bytów. |
 
-### 15.3. Kontrakty techniczne rozszerzenia
+### 16.3. Kontrakty techniczne rozszerzenia
 
-#### 15.3.1. Zasada renderowania pozycji
+#### 16.3.1. Zasada renderowania pozycji
 
 W `EntityRenderable.render(alpha)`:
 
@@ -908,7 +913,7 @@ W `EntityRenderable.render(alpha)`:
 3. Jeśli renderable jest dynamiczny, użyj wartości interpolowanych bez zaokrąglania.
 4. `ctx.translate(renderX, renderY)`.
 
-#### 15.3.2. Klasyfikacja static/dynamic
+#### 16.3.2. Klasyfikacja static/dynamic
 
 Źródłem prawdy jest encja logiczna podczas tworzenia renderable:
 
@@ -917,13 +922,13 @@ W `EntityRenderable.render(alpha)`:
 
 To dotyczy również bytów dodawanych później przez systemy gameplayowe.
 
-#### 15.3.3. Pętla i fizyka
+#### 16.3.3. Pętla i fizyka
 
 - Symulacja pozostaje float (`number`, bez kwantyzacji pozycji fizycznej).
 - Fixed update pozostaje na `60 Hz`.
 - Interpolacja (`alpha`) pozostaje aktywna dla renderu dynamicznego.
 
-### 15.4. Testy ręczne rozszerzenia
+### 16.4. Testy ręczne rozszerzenia
 
 | ID | Test | Oczekiwany wynik |
 |---|---|---|
@@ -935,7 +940,7 @@ To dotyczy również bytów dodawanych później przez systemy gameplayowe.
 | SR6 | Po dodaniu pocisków w kolejnych etapach | Pociski renderowane płynnie (bez snappingu), statyczne obiekty nadal stabilne. |
 | SR7 | `npm run type-check` + `npm run build` | 0 błędów. |
 
-### 15.5. Kryteria zamknięcia rozszerzenia
+### 16.5. Kryteria zamknięcia rozszerzenia
 
 | ID | Kryterium | Opis |
 |---|---|---|
@@ -947,16 +952,16 @@ To dotyczy również bytów dodawanych później przez systemy gameplayowe.
 
 ---
 
-## 16. Rozszerzenie Etapu 5.5 — Wydajność paralaksy przy dużym viewport
+## 17. Rozszerzenie Etapu 5.5 — Wydajność paralaksy przy dużym viewport
 
-### 16.1. Cel rozszerzenia
+### 17.1. Cel rozszerzenia
 
 Zachować płynność renderu przy bardzo dużych rozmiarach okna, tak aby zwiększanie viewportu
 nie powodowało gwałtownego wzrostu kosztu generowania warstw paralaksy.
 
 Zakres rozszerzenia obejmuje wyłącznie `ParallaxLayer` i metryki diagnostyczne w Dev Overlay.
 
-### 16.2. Decyzje architektoniczne rozszerzenia
+### 17.2. Decyzje architektoniczne rozszerzenia
 
 | ID | Temat | Decyzja |
 |---|---|---|
@@ -967,9 +972,9 @@ Zakres rozszerzenia obejmuje wyłącznie `ParallaxLayer` i metryki diagnostyczne
 | R5.5-P5 | Rola `noiseIntensity` | `noiseIntensity` pozostaje parametrem charakteru szumu (liczność + alpha), ale nie zastępuje jawnej kontroli gęstości. |
 | R5.5-P6 | Metryki płynności | Dodać do Dev Overlay metryki: `fps` i `frame ms`. Dla płynności kluczowa jest stabilność `frame ms`; `fps` jest metryką wtórną. |
 
-### 16.3. Kontrakty techniczne rozszerzenia
+### 17.3. Kontrakty techniczne rozszerzenia
 
-#### 16.3.1. Rozszerzenie konfiguracji paralaksy
+#### 17.3.1. Rozszerzenie konfiguracji paralaksy
 
 `ParallaxSublayerConfig` dostaje nowe pole:
 
@@ -985,7 +990,7 @@ interface ParallaxSublayerConfig {
 }
 ```
 
-#### 16.3.2. Cap rozmiaru tekstury offscreen
+#### 17.3.2. Cap rozmiaru tekstury offscreen
 
 W `ParallaxLayer.render()` generowanie subwarstwy używa rozmiaru:
 
@@ -996,22 +1001,22 @@ textureHeight = min(viewportHeight, 900)
 
 Offset i tiling działają jak dotychczas, ale na capowanej teksturze.
 
-#### 16.3.3. Liczność cząstek
+#### 17.3.3. Liczność cząstek
 
 W `renderSublayerToCanvas(...)`:
 
-- `dustCount` i `wispCount` są liczone od pola capowanej tekstury,
+- `dustCount` jest liczony od pola capowanej tekstury,
 - wynik jest mnożony przez `densityMultiplier`,
 - `noiseIntensity` nadal wpływa na liczność i przezroczystość.
+- W aktualnej implementacji brak osobnej puli `wispCount`.
 
 Przykładowa forma:
 
 ```txt
 dustCount = floor((area / 900) * densityMultiplier * (0.8 + noiseIntensity))
-wispCount = floor((area / 120000) * densityMultiplier * (0.6 + noiseIntensity))
 ```
 
-#### 16.3.4. Metryki Dev Overlay
+#### 17.3.4. Metryki Dev Overlay
 
 Dodać metryki runtime:
 
@@ -1020,7 +1025,7 @@ Dodać metryki runtime:
 
 Metryki umieszczone w sekcji `System`.
 
-### 16.4. Testy ręczne rozszerzenia
+### 17.4. Testy ręczne rozszerzenia
 
 | ID | Test | Oczekiwany wynik |
 |---|---|---|
@@ -1028,15 +1033,15 @@ Metryki umieszczone w sekcji `System`.
 | PR2 | Zmień rozmiar okna kilkukrotnie | Brak długich przycięć związanych z regeneracją paralaksy. |
 | PR3 | Obserwuj `fps` i `frame ms` w Dev Overlay | Metryki aktualizują się w czasie rzeczywistym. |
 | PR4 | Porównaj warianty presetów i `densityMultiplier` | Zmiana gęstości działa bez wpływu na logikę lotu. |
-| PR5 | Sprawdź regresję anti-shimmer | Static snapping/dynamic subpixel działają jak w sekcji 15. |
+| PR5 | Sprawdź regresję anti-shimmer | Static snapping/dynamic subpixel działają jak w sekcji 16. |
 | PR6 | `npm run type-check` + `npm run build` | 0 błędów. |
 
-### 16.5. Kryteria zamknięcia rozszerzenia
+### 17.5. Kryteria zamknięcia rozszerzenia
 
 | ID | Kryterium | Opis |
 |---|---|---|
 | PK1 | Cap tekstury działa | `ParallaxLayer` nie tworzy offscreenów większych niż 1600x900. |
-| PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością cząstek niezależnie od `noiseIntensity`. |
+| PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością generowanych cząstek (`dust`) niezależnie od `noiseIntensity`. |
 | PK3 | Diagnostyka płynności | Dev Overlay pokazuje `fps` i `frame ms`. |
 | PK4 | Brak regresji renderu | Tło, culling, lot i panel dev działają bez regresji funkcjonalnej. |
 | PK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. |

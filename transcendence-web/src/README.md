@@ -22,6 +22,10 @@ Minimalny przeplyw:
 2. `main.ts` wywoluje `bootstrap()`.
 3. `bootstrap()` tworzy `AppShell` i uruchamia petle.
 
+## Dokumentacja plikowa
+- Dokumentacja plikow jest trzymana bezposrednio obok kodu jako pliki z sufiksem `.md`.
+- Dla nowych plikow kodu nalezy dodac odpowiadajacy plik `<nazwa_pliku_kodu>.md` w tym samym folderze.
+
 ## Czego NIE robi
 - Nie jest folderem produkcyjnych assetow poza kodem i CSS.
 - Nie zawiera konfiguracji bundlera (to jest w katalogu glownym).
