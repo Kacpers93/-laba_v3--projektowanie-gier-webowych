@@ -214,8 +214,8 @@ export class AppShell {
       starCount: 400,
       minBrightness: 0.3,
       maxBrightness: 1.0,
-      minSize: 0.5,
-      maxSize: 2.0,
+      minSize: 0.3,
+      maxSize: 0.8,
     });
     this.sceneRenderer.addLayer(this.backgroundLayer);
 
