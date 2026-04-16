@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transcendence UI Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family==Orbitron:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-display: 'Orbitron', 'Inter', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --bg: #08101a;
+      --bg-2: #0d1723;
+      --panel: rgba(18, 31, 46, 0.82);
+      --panel-strong: rgba(29, 44, 62, 0.9);
+      --line: rgba(111, 162, 214, 0.24);
+      --line-strong: rgba(132, 182, 234, 0.45);
+      --text: #d7dee6;
+      --muted: #8fa1b5;
+      --accent: #d7d82d;
+      --accent-2: #7bc8ff;
+      --danger: #ff6c6c;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 18px;
+      --radius-sm: 10px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --hud-size: 280px;
+      --reactor-panel-w: 520px;
+      --status-panel-w: 520px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(85, 129, 196, 0.18), transparent 30%),
+        radial-gradient(circle at 80% 10%, rgba(83, 36, 96, 0.22), transparent 25%),
+        radial-gradient(circle at 70% 80%, rgba(145, 58, 32, 0.16), transparent 28%),
+        #02070d;
+      overflow: hidden;
+    }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      isolation: isolate;
+    }
+
+    .starfield,
+    .starfield::before,
+    .starfield::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(255,255,255,.85) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 30% 70%, rgba(255,255,255,.55) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 60% 35%, rgba(255,255,255,.75) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 82% 18%, rgba(255,255,255,.45) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 76% 62%, rgba(255,255,255,.65) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 15% 84%, rgba(255,255,255,.35) 0 1px, transparent 1.5px);
+      background-size: 420px 420px;
+      opacity: 0.55;
+    }
+    .starfield::before { transform: scale(1.3); opacity: 0.28; }
+    .starfield::after { transform: scale(1.8); opacity: 0.18; }
+
+    .play-area {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .ship-silhouette {
+      width: min(16vw, 180px);
+      aspect-ratio: 0.42;
+      border-radius: 40px;
+      background:
+        linear-gradient(180deg, #7e807f 0%, #a5a7a6 10%, #7a7d7f 20%, #8c8d8e 60%, #5b5c5d 100%);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.1), 0 0 30px rgba(67,148,225,.14);
+      position: relative;
+      transform: rotate(28deg) translateY(20px);
+      opacity: .9;
+    }
+    .ship-silhouette::before,
+    .ship-silhouette::after {
+      content: "";
+      position: absolute;
+      bottom: -12px;
+      width: 26%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffc27a, #a94b1e 55%, #3a1a10 100%);
+      box-shadow: 0 0 25px rgba(255, 151, 70, .35);
+    }
+    .ship-silhouette::before { left: 18%; }
+    .ship-silhouette::after { right: 18%; }
+
+    .hud-corner {
+      position: absolute;
+      width: min(var(--hud-size), 29vw);
+      min-width: 230px;
+      padding: var(--space-4);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(17, 31, 47, 0.86), rgba(10, 19, 30, 0.74)),
+        repeating-linear-gradient(0deg, rgba(123, 200, 255, 0.05), rgba(123, 200, 255, 0.05) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(123, 200, 255, 0.05), rgba(123, 200, 255, 0.05) 1px, transparent 1px, transparent 28px);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .reactor-panel, .status-panel {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      padding: 0;
+      overflow: visible;
+    }
+    .reactor-panel::after, .status-panel::after { display: none; }
+    .reactor-panel { width: min(var(--reactor-panel-w), 42vw); min-width: 360px; }
+    .status-panel { width: min(var(--status-panel-w), 44vw); min-width: 400px; }
+    .hud-corner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+      pointer-events: none;
+    }
+
+    .tl { top: 18px; left: 18px; }
+    .tr { top: 18px; right: 18px; }
+    .bl { left: 18px; bottom: 18px; }
+    .br { right: 18px; bottom: 18px; }
+
+    .hud-title {
+      margin: 0 0 var(--space-3);
+      font-family: var(--font-display);
+      font-size: clamp(14px, 1.1vw, 18px);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .reactor-widget {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      align-items: center;
+      gap: 12px;
+      color: #d7e4ee;
+      text-shadow: 0 1px 0 rgba(0,0,0,.65);
+    }
+    .reactor-orb {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      position: relative;
+      background: radial-gradient(circle at 35% 30%, #133a87 0%, #0c2368 36%, #07154f 65%, #040b2d 100%);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.06), 0 0 18px rgba(51,101,255,.18);
+      overflow: hidden;
+    }
+    .reactor-orb::before {
+      content: '';
+      position: absolute;
+      inset: 18px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #68798d, #49596c);
+      clip-path: polygon(8% 12%, 92% 12%, 100% 26%, 100% 75%, 84% 88%, 16% 88%, 0 75%, 0 26%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .reactor-orb::after {
+      content: '';
+      position: absolute;
+      left: 24px; right: 24px; bottom: 23px; height: 14px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #ff926e, #a62012);
+      box-shadow: 0 0 8px rgba(255,96,56,.35);
+    }
+    .reactor-bars { display: grid; gap: 2px; }
+    .reactor-caption {
+      font-size: 11px;
+      color: #b3c5d3;
+      margin-left: 8px;
+      letter-spacing: .05em;
+      text-transform: lowercase;
+    }
+    .usage-track {
+      position: relative;
+      height: 16px;
+      border-radius: 2px;
+      overflow: hidden;
+      background: linear-gradient(90deg, rgba(251,251,215,.95) 0 24%, rgba(164,160,84,.98) 24% 100%);
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .usage-track::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, transparent 0 7px, rgba(0,0,0,.18) 7px 8px);
+      opacity: .45;
+    }
+    .reactor-nameplate {
+      height: 26px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      background: linear-gradient(180deg, #0b195d, #091042);
+      color: #edf2ff;
+      font-size: 14px;
+      font-weight: 600;
+      border-top: 1px solid rgba(255,255,255,.1);
+      border-bottom: 1px solid rgba(0,0,0,.65);
+    }
+    .fuel-track {
+      height: 18px;
+      display: flex;
+      gap: 2px;
+      padding: 2px 0;
+      align-items: center;
+    }
+    .fuel-track span {
+      width: 9px;
+      height: 100%;
+      background: linear-gradient(180deg, #a6ec85, #5f9550);
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,.35);
+    }
+    .reactor-foot {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 2px;
+    }
+
+    .status-widget {
+      position: relative;
+      width: 100%;
+      min-height: 280px;
+      color: #d9e5ef;
+      text-shadow: 0 1px 0 rgba(0,0,0,.65);
+    }
+    .status-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 82px;
+      height: 160px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #8d908d, #b3b5b1 12%, #838680 40%, #9a9c97 70%, #63655f 100%);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.08);
+    }
+    .status-core::before, .status-core::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffcb8c, #b55b23 55%, #3d1c11 100%);
+      box-shadow: 0 0 10px rgba(255,144,62,.3);
+    }
+    .status-core::before { left: 16px; }
+    .status-core::after { right: 16px; }
+    .shield-outer {
+      position: absolute;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 250px; height: 250px; border-radius: 50%;
+      background: conic-gradient(#66c116 0 360deg);
+      box-shadow: inset 0 0 0 18px rgba(0,0,0,.08);
+    }
+    .shield-outer::before {
+      content: '';
+      position: absolute;
+      inset: 28px;
+      border-radius: 50%;
+      background: #07101c;
+      box-shadow: inset 0 0 0 5px rgba(0,0,0,.55);
+    }
+    .armor-ring {
+      position: absolute;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 178px; height: 178px; border-radius: 50%;
+      background: conic-gradient(
+        #e68605 0deg 42deg, #06152b 42deg 48deg,
+        #e68605 48deg 90deg, #06152b 90deg 96deg,
+        #e68605 96deg 138deg, #06152b 138deg 144deg,
+        #e68605 144deg 186deg, #06152b 186deg 192deg,
+        #e68605 192deg 234deg, #06152b 234deg 240deg,
+        #e68605 240deg 282deg, #06152b 282deg 288deg,
+        #e68605 288deg 330deg, #06152b 330deg 336deg,
+        #e68605 336deg 360deg
+      );
+    }
+    .armor-ring::before {
+      content: '';
+      position: absolute;
+      inset: 32px;
+      border-radius: 50%;
+      background: #2b2f39;
+      box-shadow: inset 0 0 0 5px rgba(0,0,0,.45);
+    }
+    .shield-value {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 58px;
+      text-align: center;
+      font-size: 18px;
+      color: #ebf6eb;
+      background: rgba(63, 119, 18, .62);
+      padding: 2px 8px;
+      border-radius: 2px;
+    }
+    .armor-values span {
+      position: absolute;
+      z-index: 2;
+      min-width: 44px;
+      text-align: center;
+      font-size: 18px;
+      color: #d5d3c0;
+      background: rgba(149, 97, 24, .78);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+    .armor-values span:nth-child(1) { top: 56px; left: 50%; transform: translateX(-50%); }
+    .armor-values span:nth-child(2) { top: 70px; right: 118px; }
+    .armor-values span:nth-child(3) { top: 70px; left: 118px; }
+    .armor-values span:nth-child(4) { top: 122px; left: 56px; }
+    .armor-values span:nth-child(5) { top: 122px; right: 56px; }
+    .armor-values span:nth-child(6) { bottom: 66px; left: 84px; }
+    .armor-values span:nth-child(7) { bottom: 66px; right: 84px; }
+    .armor-values span:nth-child(8) { bottom: 48px; left: 50%; transform: translateX(-50%); }
+    .armor-labels span, .shield-label {
+      position: absolute;
+      font-size: 14px;
+      line-height: 1;
+      color: #ebe6d4;
+      background: rgba(150, 91, 14, .86);
+      padding: 5px 10px;
+      clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+      white-space: nowrap;
+    }
+    .armor-labels span:nth-child(1) { left: 6px; top: 86px; }
+    .armor-labels span:nth-child(2) { left: 0; top: 122px; }
+    .armor-labels span:nth-child(3) { left: 2px; top: 160px; }
+    .armor-labels span:nth-child(4) { left: 22px; top: 198px; }
+    .armor-labels span:nth-child(5) { right: 10px; top: 86px; }
+    .armor-labels span:nth-child(6) { right: 0; top: 126px; }
+    .armor-labels span:nth-child(7) { right: 8px; top: 166px; }
+    .shield-label {
+      right: 14px;
+      bottom: 14px;
+      background: rgba(73, 131, 8, .92);
+      clip-path: polygon(14px 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+      color: #d7efb7;
+    }
+    .shield-tag {
+      position: absolute;
+      right: 148px;
+      bottom: -10px;
+      font-size: 12px;
+      color: #dce9ff;
+      background: rgba(27, 92, 179, .95);
+      padding: 3px 7px;
+      border-radius: 2px;
+    }
+    .hud-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+    .hud-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .meter {
+      margin-top: var(--space-2);
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .meter > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #79b2ff, #d7d82d);
+    }
+
+    .mini-map {
+      margin-top: var(--space-3);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid var(--line-strong);
+      position: relative;
+      background:
+        radial-gradient(circle at center, rgba(100,140,200,.18), rgba(11, 18, 28, .1) 45%, rgba(8, 12, 20, .7) 46%, rgba(8, 12, 20, .92) 100%),
+        repeating-radial-gradient(circle at center, rgba(110,180,255,.08) 0 1px, transparent 1px 38px);
+      overflow: hidden;
+    }
+    .mini-map::before,
+    .mini-map::after {
+      content: "";
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: -38px -48px 0 0 #89d0ff, 52px 18px 0 0 #d7d82d, -68px 42px 0 0 #ff8678;
+    }
+    .mini-map::after {
+      width: 78px;
+      height: 78px;
+      margin-left: -39px;
+      margin-top: -39px;
+      border: 1px dashed rgba(123, 200, 255, .18);
+      background: none;
+      box-shadow: none;
+    }
+
+    .target-card .target-name,
+    .ship-card .ship-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #95ddff;
+      margin-bottom: var(--space-2);
+    }
+    .target-card .target-line,
+    .ship-card .ship-line {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-4);
+      font-size: 14px;
+      margin: 4px 0;
+      color: var(--muted);
+    }
+    .target-card .target-line strong,
+    .ship-card .ship-line strong { color: var(--text); font-weight: 600; }
+
+    .shield-ring {
+      margin-top: var(--space-4);
+      width: 170px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      margin-left: auto;
+      background:
+        radial-gradient(circle, rgba(10,18,24,1) 0 32%, transparent 33%),
+        conic-gradient(from 0deg, #8cda3e 0 100%),
+        radial-gradient(circle, transparent 0 56%, rgba(255,160,36,.9) 57% 74%, transparent 75%),
+        radial-gradient(circle, rgba(14,20,28,1) 0 100%);
+      position: relative;
+      box-shadow: inset 0 0 0 10px rgba(0,0,0,.3);
+    }
+    .shield-ring::before {
+      content: "160";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-display);
+      font-size: 24px;
+      color: #9ae0ff;
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-6);
+      padding: 0 var(--space-6);
+      background: linear-gradient(180deg, rgba(86, 100, 118, .55), rgba(58, 72, 88, .28));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(10px);
+    }
+    .top-bar h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2vw, 30px);
+      font-weight: 500;
+      letter-spacing: .06em;
+      color: rgba(233, 240, 248, .95);
+      text-shadow: 0 0 12px rgba(0,0,0,.25);
+    }
+    .resource-strip {
+      position: absolute;
+      right: 26px;
+      display: flex;
+      gap: var(--space-6);
+      font-size: 14px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .editor-toggle, .menu-open-btn {
+      position: absolute;
+      z-index: 30;
+      top: 76px;
+      border: 1px solid var(--line-strong);
+      background: rgba(11, 22, 34, .86);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+    }
+    .editor-toggle { left: 20px; }
+    .menu-open-btn { left: 170px; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      background: rgba(2, 7, 13, .18);
+      z-index: 20;
+      pointer-events: none;
+    }
+    .overlay.active { display: block; }
+
+    .menu-panel {
+      position: absolute;
+      right: 5.5%;
+      top: 28%;
+      width: min(360px, 30vw);
+      max-height: 52vh;
+      overflow: auto;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      pointer-events: auto;
+    }
+    .menu-header {
+      display: none;
+    }
+    .menu-header h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: .05em;
+    }
+    .close-btn, .tiny-btn, .action-btn {
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .close-btn { padding: 10px 12px; }
+    .action-btn { padding: 10px 14px; }
+    .tiny-btn { padding: 6px 10px; font-size: 12px; }
+
+    .breadcrumbs { display: none; }
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .menu-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      border: none;
+      background: rgba(17, 22, 28, .56);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 0;
+      cursor: pointer;
+      text-align: left;
+      transition: .18s ease;
+      border-top: 1px solid rgba(255,255,255,.03);
+      border-bottom: 1px solid rgba(44,71,102,.22);
+    }
+    .menu-item:hover,
+    .menu-item:focus-visible {
+      background: rgba(30, 36, 44, .74);
+      transform: none;
+    }
+    .menu-item .hotkey {
+      color: var(--accent);
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .menu-item small { color: var(--muted); }
+
+
+    .scene-shell {
+      position: absolute;
+      inset: 78px 20px 20px;
+      border: 1px solid rgba(106, 151, 203, .22);
+      border-radius: 0 0 34px 0;
+      background:
+        linear-gradient(90deg, rgba(5,12,22,.18) 0 56%, rgba(22, 37, 54, .34) 56% 100%),
+        repeating-linear-gradient(0deg, rgba(123, 200, 255, 0.045), rgba(123, 200, 255, 0.045) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(123, 200, 255, 0.045), rgba(123, 200, 255, 0.045) 1px, transparent 1px, transparent 28px);
+      box-shadow: inset 0 0 40px rgba(87, 166, 255, .08);
+      overflow: hidden;
+      display: none;
+      z-index: 12;
+    }
+    .scene-shell.active { display: grid; grid-template-columns: minmax(0, 58%) minmax(360px, 42%); }
+    .scene-visual {
+      position: relative;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 25% 20%, rgba(70,120,200,.16), transparent 26%),
+        radial-gradient(circle at 20% 80%, rgba(70,120,200,.1), transparent 28%),
+        transparent;
+    }
+    .scene-side {
+      position: relative;
+      padding: 16px 18px 18px;
+      background: linear-gradient(180deg, rgba(20,34,49,.32), rgba(11,21,32,.48));
+      border-left: 1px solid rgba(123, 200, 255, .12);
+    }
+    .side-info-box {
+      margin: 10px 20px 26px 18px;
+      max-width: 430px;
+      padding: 14px 16px;
+      background: rgba(70, 81, 96, .34);
+      border: 1px solid rgba(255,255,255,.05);
+      color: #d4dde7;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    .side-menu-list {
+      width: min(360px, calc(100% - 40px));
+      margin: 0 0 0 72px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 58vh;
+      overflow: auto;
+      padding-right: 6px;
+    }
+    .side-menu-item {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      color: #d8e0e9;
+      background: rgba(17, 22, 28, .54);
+      border: none;
+      border-top: 1px solid rgba(255,255,255,.03);
+      border-bottom: 1px solid rgba(44, 71, 102, .22);
+      font-size: 18px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+    }
+    .side-menu-item:hover, .side-menu-item:focus-visible {
+      background: rgba(30, 36, 44, .72);
+      outline: none;
+    }
+    .side-menu-item .hotkey {
+      color: var(--accent);
+      margin-right: 1px;
+      font-weight: 700;
+    }
+    .side-menu-item .subcount { color: #8899ad; font-size: 14px; font-weight: 500; }
+    .side-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 8px 14px 0 18px;
+    }
+    .side-panel-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(30px, 3.6vw, 60px);
+      font-weight: 500;
+      letter-spacing: .02em;
+      color: rgba(235, 242, 250, .95);
+      text-shadow: 0 1px 0 rgba(0,0,0,.75);
+    }
+    .side-detail-area {
+      margin: 6px 18px 0 18px;
+      min-height: 360px;
+      max-height: calc(100% - 110px);
+      overflow: auto;
+      display: none;
+    }
+    .side-detail-area.active { display: block; }
+    .detail-card {
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 12px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(133, 176, 225, .2);
+      background: rgba(15, 24, 36, .72);
+      border-radius: 8px;
+    }
+    .detail-icon {
+      width: 88px;
+      height: 88px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      display: grid;
+      place-items: center;
+      color: #8ecfff;
+      font-family: var(--font-display);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .detail-title { font-size: 20px; font-weight: 700; color: #e1e9ef; margin-bottom: 4px; }
+    .detail-desc { font-size: 14px; color: #9fb0c1; line-height: 1.35; }
+    .detail-meta { font-size: 14px; color: #d5e36f; font-weight: 700; }
+    .detail-toolbar {
+      display: flex;
+      gap: 10px;
+      margin: 0 0 14px 0;
+      flex-wrap: wrap;
+    }
+    .detail-empty {
+      padding: 24px 18px;
+      color: #9aaaba;
+      background: rgba(255,255,255,.03);
+      border: 1px dashed rgba(255,255,255,.08);
+      border-radius: 10px;
+    }
+
+    .editor {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(420px, 100vw);
+      height: 100%;
+      z-index: 40;
+      background: rgba(5, 11, 18, .96);
+      border-left: 1px solid var(--line);
+      box-shadow: -20px 0 60px rgba(0,0,0,.4);
+      transform: translateX(100%);
+      transition: transform .25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .editor.open { transform: translateX(0); }
+    .editor-header {
+      padding: var(--space-5);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .editor-header h2 {
+      margin: 0 0 8px;
+      font-family: var(--font-display);
+      font-size: 22px;
+    }
+    .editor-body {
+      flex: 1;
+      overflow: auto;
+      padding: var(--space-5);
+      display: grid;
+      gap: var(--space-4);
+      align-content: start;
+    }
+    .panel-box {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: var(--space-4);
+      background: rgba(255,255,255,.025);
+    }
+    .panel-box h3 {
+      margin: 0 0 var(--space-3);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      padding: 10px 12px;
+      resize: vertical;
+      min-height: 42px;
+    }
+    .field textarea { min-height: 88px; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    .tree {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .tree button {
+      text-align: left;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.025);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .tree button.active { border-color: var(--accent-2); background: rgba(123, 200, 255, .12); }
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .code-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: rgba(0,0,0,.26);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 240px;
+      overflow: auto;
+      color: #bad8f4;
+    }
+
+    @media (max-width: 980px) {
+      .hud-corner { width: min(48vw, 320px); min-width: 0; }
+      .reactor-panel, .status-panel { width: min(48vw, 420px); min-width: 0; }
+      .editor-toggle, .menu-open-btn { top: auto; bottom: 16px; }
+      .editor-toggle { left: 16px; }
+      .menu-open-btn { left: 146px; }
+    }
+    @media (max-width: 760px) {
+      .top-bar { height: auto; min-height: 58px; padding: 12px 16px; justify-content: flex-start; }
+      .top-bar h1 { font-size: 18px; }
+      .resource-strip { position: static; margin-left: auto; gap: 12px; font-size: 12px; }
+      .hud-corner {
+        width: calc(50vw - 18px);
+        padding: 12px;
+        border-radius: 16px;
+      }
+      .reactor-widget { grid-template-columns: 58px 1fr; }
+      .reactor-orb { width: 56px; height: 56px; }
+      .status-widget { min-height: 220px; }
+      .shield-outer { width: 190px; height: 190px; }
+      .armor-ring { width: 136px; height: 136px; }
+      .status-core { width: 62px; height: 122px; }
+      .target-card .target-name, .ship-card .ship-name { font-size: 15px; }
+    }
+    @media (max-width: 580px) {
+      body { overflow: auto; }
+      .app { min-height: 100dvh; }
+      .play-area { padding-top: 100px; }
+      .hud-corner {
+        position: relative;
+        width: calc(100% - 24px);
+        margin: 12px auto 0;
+        inset: auto !important;
+      }
+      .hud-layer {
+        position: absolute;
+        inset: 70px 0 120px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        pointer-events: none;
+      }
+      .hud-layer .hud-corner { pointer-events: auto; }
+      .editor { width: 100vw; }
+      .menu-panel { width: calc(100vw - 20px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="starfield"></div>
+
+    <header class="top-bar">
+      <h1 id="sceneTitle">T55-class Armed Transport</h1>
+      <div class="resource-strip">
+        <span>Credits: <strong id="creditsValue">134,335</strong></span>
+        <span>Cargo Space: <strong id="cargoValue">1539.6 tons</strong></span>
+      </div>
+    </header>
+
+    <button class="editor-toggle" id="editorToggle">Edytor UI</button>
+    <button class="menu-open-btn" id="openCurrentMenu">Otwórz menu</button>
+
+    <div class="scene-shell" id="sceneShell">
+      <div class="scene-visual" id="sceneVisual"></div>
+      <div class="scene-side">
+        <div class="side-panel-header">
+          <h2 class="side-panel-title" id="sidePanelTitle">Horticult Colony</h2>
+        </div>
+        <div class="side-info-box" id="sideInfoBox">You are inside a C9-class prefabricated agricultural station.</div>
+        <div class="side-menu-list" id="sideMenuList"></div>
+        <div class="side-detail-area" id="sideDetailArea"></div>
+      </div>
+    </div>
+
+    <div class="play-area">
+      <div class="ship-silhouette" aria-hidden="true"></div>
+    </div>
+
+    <div class="hud-layer">
+      <section class="hud-corner tl reactor-panel">
+        <div class="reactor-widget">
+          <div class="reactor-orb" aria-hidden="true"></div>
+          <div class="reactor-bars">
+            <div class="reactor-caption">power usage</div>
+            <div class="usage-track" id="usageTrack"></div>
+            <div class="reactor-nameplate"><span id="reactorModel">Nova-50 reactor</span>&nbsp;<span id="reactorOutput">(50 MW)</span></div>
+            <div class="fuel-track" id="fuelTrack"></div>
+            <div class="reactor-foot">
+              <div class="reactor-caption">fuel</div>
+              <div class="hud-value" id="reactorFuel">Helium-3 rods</div>
+              <div class="hud-value" id="reactorUsage">8.9 MW</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="hud-corner tr">
+        <h2 class="hud-title">System map</h2>
+        <div class="hud-grid">
+          <div>
+            <div class="hud-label">Sector</div>
+            <div class="hud-value" id="mapSector">Eridani</div>
+          </div>
+          <div>
+            <div class="hud-label">Contacts</div>
+            <div class="hud-value" id="mapContacts">3 ships</div>
+          </div>
+        </div>
+        <div class="mini-map" aria-hidden="true"></div>
+      </section>
+
+      <section class="hud-corner bl target-card">
+        <h2 class="hud-title">Selected target</h2>
+        <div class="target-name" id="targetName">Volkov</div>
+        <div class="target-line"><span>Range</span><strong id="targetRange">10</strong></div>
+        <div class="target-line"><span>Shields</span><strong id="targetShields">100%</strong></div>
+        <div class="target-line"><span>Armor</span><strong id="targetArmor">100%</strong></div>
+        <div class="target-line"><span>Weapon</span><strong id="targetWeapon">AK505 Ballista cannon</strong></div>
+      </section>
+
+      <section class="hud-corner br ship-card status-panel">
+        <div class="status-widget">
+          <div class="shield-outer" aria-hidden="true"></div>
+          <div class="armor-ring" aria-hidden="true"></div>
+          <div class="status-core" aria-hidden="true"></div>
+          <div class="shield-value" id="shieldValue">160</div>
+          <div class="armor-values" aria-hidden="true">
+            <span>125</span><span>125</span><span>125</span><span>125</span><span>125</span><span>125</span><span>125</span><span>125</span>
+          </div>
+          <div class="armor-labels" aria-hidden="true">
+            <span>blast plate</span><span>blast plate</span><span>blast plate</span><span>blast plate</span><span>blast plate</span><span>blast plate</span><span>blast plate</span>
+          </div>
+          <div class="shield-label" id="playerShield">Yoroi S500 shield generator</div>
+          <div class="shield-tag">+thermo</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="overlay" id="menuOverlay" aria-hidden="true">
+      <div class="menu-panel" role="dialog" aria-modal="true" aria-labelledby="menuHeading">
+        <div class="menu-header">
+          <div>
+            <h2 id="menuHeading">Menu</h2>
+            <div class="breadcrumbs" id="breadcrumbs"></div>
+          </div>
+          <button class="close-btn" id="closeMenu">Esc Done</button>
+        </div>
+        <div class="menu-list" id="menuList"></div>
+      </div>
+    </div>
+
+    <aside class="editor" id="editorPanel">
+      <div class="editor-header">
+        <h2>Edytor danych UI</h2>
+        <div class="hint">Klikasz element drzewa, edytujesz teksty, dodajesz podmenu, usuwasz wpisy. Wszystko działa na jednym obiekcie JSON w pamięci.</div>
+      </div>
+      <div class="editor-body">
+        <div class="panel-box">
+          <h3>Preset ekranu</h3>
+          <div class="row">
+            <button class="action-btn" data-preset="shipStatus">Ship status</button>
+            <button class="action-btn" data-preset="dock">Dock</button>
+            <button class="action-btn" data-preset="salvage">Salvage</button>
+            <button class="action-btn" data-preset="pauseMenu">Menu</button>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Drzewo menu</h3>
+          <div class="tree" id="menuTree"></div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Edycja zaznaczonego wpisu</h3>
+          <div class="field">
+            <label for="itemId">ID</label>
+            <input id="itemId" />
+          </div>
+          <div class="field">
+            <label for="itemLabel">Label</label>
+            <input id="itemLabel" />
+          </div>
+          <div class="field">
+            <label for="itemDescription">Opis</label>
+            <textarea id="itemDescription"></textarea>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="itemHotkey">Hotkey</label>
+              <input id="itemHotkey" maxlength="1" />
+            </div>
+            <div class="field">
+              <label for="itemAction">Action</label>
+              <input id="itemAction" />
+            </div>
+          </div>
+          <div class="row">
+            <button class="action-btn" id="saveItem">Zapisz wpis</button>
+            <button class="action-btn" id="addChild">Dodaj podopcję</button>
+            <button class="action-btn" id="deleteItem">Usuń wpis</button>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Dodaj nowy root</h3>
+          <div class="field">
+            <label for="newRootLabel">Nazwa menu root</label>
+            <input id="newRootLabel" placeholder="np. engineering" />
+          </div>
+          <button class="action-btn" id="addRoot">Dodaj root</button>
+        </div>
+
+        <div class="panel-box">
+          <h3>JSON podgląd</h3>
+          <div class="code-box" id="jsonPreview"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const uiData = {
+      hud: {
+        title: 'T55-class Armed Transport',
+        credits: '134,335',
+        cargoSpace: '1539.6 tons',
+        reactor: { model: 'Nova-50 reactor', output: '50 MW', fuel: 'Helium-3 rods', usage: '8.9 MW', meter: 76 },
+        map: { sector: 'Eridani', contacts: '3 ships' },
+        target: { name: 'Volkov', range: '10', shields: '100%', armor: '100%', weapon: 'AK505 Ballista cannon' },
+        player: { name: 'T55-class Armed Transport', armor: '7× Blast plate', shield: 'Yoroi S500', drive: 'T55 Drive', devices: '6 slots' }
+      },
+      menus: {
+        pauseMenu: {
+          id: 'pauseMenu',
+          label: 'Transcendence',
+          description: 'Menu pauzy gry',
+          items: [
+            { id: 'help', label: 'Help', hotkey: 'H', description: 'Podstawy sterowania i skróty', action: 'open-help', items: [
+              { id: 'flight-controls', label: 'Flight controls', hotkey: 'F', description: 'Ruch, obrót, strzał', action: 'noop', items: [] },
+              { id: 'combat-basics', label: 'Combat basics', hotkey: 'C', description: 'Cele, tarcze, dystans', action: 'noop', items: [] }
+            ], detailTitle: 'Recoverable components', detailMode: 'list', detailItems: [{ title: 'Damaged reactor core', desc: 'Can be repaired or scrapped', meta: 'core' }, { title: 'Blast plate section', desc: 'Armor plate with 34% integrity', meta: '125 hp' }, { title: 'Targeting relay', desc: 'Likely salvageable electronics', meta: 'module' }, { title: 'Thruster nozzle', desc: 'Engine component, worn condition', meta: 'engine' }]},
+            { id: 'game-stats', label: 'Game Stats', hotkey: 'G', description: 'Podgląd statystyk sesji', action: 'open-stats', items: [] },
+            { id: 'save', label: 'Save', hotkey: 'S', description: 'Zapis bieżącej gry', action: 'save-game', items: [] },
+            { id: 'load', label: 'Load', hotkey: 'L', description: 'Wczytaj zapis', action: 'load-game', items: [] },
+            { id: 'exit-main-menu', label: 'Exit to Main Menu', hotkey: 'M', description: 'Wróć do menu głównego', action: 'exit-main', items: [] },
+            { id: 'self-destruct', label: 'Self-Destruct', hotkey: 'D', description: 'Autodestrukcja statku', action: 'self-destruct', items: [] },
+            { id: 'keyboard-settings', label: 'Keyboard Settings', hotkey: 'K', description: 'Mapowanie klawiszy', action: 'keyboard-settings', items: [
+              { id: 'movement', label: 'Movement bindings', hotkey: 'M', description: 'Silnik, obrót, hamowanie', action: 'noop', items: [] },
+              { id: 'combat', label: 'Combat bindings', hotkey: 'C', description: 'Broń i cele', action: 'noop', items: [] }
+            ]}
+          ]
+        },
+        shipStatus: {
+          id: 'shipStatus',
+          label: 'Ship\'s Interior',
+          description: 'You are inside the main compartment of your ship. A hatch in front of you opens into the cargo hold. To the side there is a small ladder that leads to the reactor and the ship\'s engines.',
+          art: 'ship',
+          items: [
+            { id: 'ship-configuration', label: 'Ship Configuration', hotkey: 'S', description: 'Kadłub, pancerz, broń, urządzenia', action: 'ship-config', items: [], detailTitle: 'Installed components', detailMode: 'list', detailItems: [{ title: 'Nova-50 Reactor', desc: 'max output 50 MW, fuel helium-3 rods', meta: 'installed' }, { title: 'AK505 Ballista Cannon', desc: 'kinetic 63 hp @ 1.3 shots/sec', meta: 'weapon' }, { title: 'Yoroi S500 Shield Generator', desc: 'medium shield generator, thermo tuned', meta: '+thermo' }, { title: 'Smuggler\'s Cargo Hold', desc: 'scan-shielded secret cargo hold', meta: 'cargo' }] },
+            { id: 'missions', label: 'Mission', hotkey: 'M', description: 'Aktywne misje i cele', action: 'missions', items: [] },
+            { id: 'view-cargo-hold', label: 'View Cargo Hold', hotkey: 'V', description: 'Ładownia i przemyt', action: 'cargo', items: [], detailTitle: 'Cargo manifest', detailMode: 'list', detailItems: [{ title: 'Fuel rod crate', desc: '4 rods ready for transfer', meta: '12 t' }, { title: 'Medical supplies', desc: 'Civilian relief cargo', meta: '8 t' }, { title: 'Contraband electronics', desc: 'Hidden in smuggler\'s hold', meta: 'illegal' }] },
+            { id: 'refuel-reactor', label: 'Refuel Reactor', hotkey: 'R', description: 'Paliwo reaktora', action: 'refuel', items: [], detailTitle: 'Fuel rods available', detailMode: 'list', detailItems: [{ title: 'Helium-3 Fuel Rod', desc: 'Standard reactor fuel rod', meta: 'x4' }, { title: 'Enhanced Fuel Rod', desc: 'Higher yield experimental rod', meta: 'x1' }] },
+            { id: 'done', label: 'Esc Done', hotkey: 'E', description: 'Powrót do gry', action: 'close', items: [] }
+          ]
+        },
+        dock: {
+          id: 'dock',
+          label: 'Horticult Colony',
+          description: 'You are inside a C9-class prefabricated agricultural station.',
+          art: 'station',
+          items: [
+            { id: 'meeting-hall', label: 'Meeting Hall', hotkey: 'M', description: 'NPC, plotki, kontrakty', action: 'meeting-hall', items: [] },
+            { id: 'missions', label: 'Missions', hotkey: 'I', description: 'Zlecenia stacji', action: 'missions', items: [] },
+            { id: 'commodities-exchange', label: 'Commodities Exchange', hotkey: 'C', description: 'Kupno i sprzedaż towarów', action: 'commodities', items: [], detailTitle: 'Market inventory', detailMode: 'list', detailItems: [{ title: 'Helium-3 Fuel Rod', desc: 'Standard reactor fuel rod used by common transports', meta: '320 cr' }, { title: 'Blast Plate', desc: 'Heavy armor segment resistant to kinetic damage', meta: '4,800 cr' }, { title: 'Patcher Arm', desc: 'Dock utility arm for field repairs', meta: '7,250 cr' }, { title: 'Medical Supplies', desc: 'Civilian freight commodity', meta: '540 cr' }, { title: 'Industrial Nanoforge Parts', desc: 'Rare station repair stock', meta: '12,900 cr' }, { title: 'Targeting Optics', desc: 'Weapon support module', meta: '2,600 cr' }] },
+            { id: 'dock-service', label: 'Dock Services', hotkey: 'D', description: 'Naprawa, upgrade, tankowanie', action: 'dock-service', items: [], detailTitle: 'Available services', detailMode: 'list', detailItems: [{ title: 'Armor repair', desc: 'Restore damaged blast plates', meta: 'service' }, { title: 'Install device', desc: 'Mount purchased component on ship', meta: 'service' }, { title: 'Reactor refuel', desc: 'Insert compatible fuel rod', meta: 'service' }] },
+            { id: 'undock', label: 'Undock', hotkey: 'U', description: 'Wyjdź ze stacji', action: 'undock', items: [] }
+          ]
+        },
+        salvage: {
+          id: 'salvage',
+          label: 'Wreck Access',
+          description: 'You are docked with a damaged wreck. Some components may still be recoverable.',
+          art: 'wreck',
+          items: [
+            { id: 'loot', label: 'Loot', hotkey: 'L', description: 'Przenieś zawartość wraku', action: 'loot', items: [], detailTitle: 'Wreck cargo', detailMode: 'list', detailItems: [{ title: 'Scrap metal', desc: 'Common salvage material', meta: '24 t' }, { title: 'Damaged medkit crate', desc: 'Partially intact cargo', meta: '6 t' }, { title: 'Missile rack', desc: 'Loose military hardware', meta: 'rare' }] },
+            { id: 'jettison', label: 'Jettison', hotkey: 'J', description: 'Wyrzuć zaznaczony ładunek', action: 'jettison', items: [] },
+            { id: 'salvage-repair', label: 'Salvage / Repair Components', hotkey: 'S', description: 'Odzysk lub naprawa komponentów', action: 'salvage-repair', items: [
+              { id: 'recover-reactor', label: 'Recover reactor', hotkey: 'R', description: 'Zabezpiecz rdzeń reaktora', action: 'recover-reactor', items: [] },
+              { id: 'strip-armor', label: 'Strip armor plate', hotkey: 'A', description: 'Zdejmij płytę pancerza', action: 'strip-armor', items: [] }
+            ]},
+            { id: 'undock', label: 'Undock', hotkey: 'U', description: 'Odejdź od wraku', action: 'undock', items: [] }
+          ]
+        }
+      }
+    };
+
+    let currentMenuKey = 'shipStatus';
+    let currentPath = [];
+    let selectedNodeId = null;
+
+    const els = {
+      sceneTitle: document.getElementById('sceneTitle'),
+      creditsValue: document.getElementById('creditsValue'),
+      cargoValue: document.getElementById('cargoValue'),
+      reactorModel: document.getElementById('reactorModel'),
+      reactorOutput: document.getElementById('reactorOutput'),
+      reactorFuel: document.getElementById('reactorFuel'),
+      reactorUsage: document.getElementById('reactorUsage'),
+      reactorMeter: document.getElementById('reactorMeter'),
+      mapSector: document.getElementById('mapSector'),
+      mapContacts: document.getElementById('mapContacts'),
+      targetName: document.getElementById('targetName'),
+      targetRange: document.getElementById('targetRange'),
+      targetShields: document.getElementById('targetShields'),
+      targetArmor: document.getElementById('targetArmor'),
+      targetWeapon: document.getElementById('targetWeapon'),
+      playerName: document.getElementById('playerName'),
+      playerArmor: document.getElementById('playerArmor'),
+      playerShield: document.getElementById('playerShield'),
+      playerDrive: document.getElementById('playerDrive'),
+      playerDevices: document.getElementById('playerDevices'),
+      menuOverlay: document.getElementById('menuOverlay'),
+      menuHeading: document.getElementById('menuHeading'),
+      menuList: document.getElementById('menuList'),
+      breadcrumbs: document.getElementById('breadcrumbs'),
+      editorPanel: document.getElementById('editorPanel'),
+      menuTree: document.getElementById('menuTree'),
+      jsonPreview: document.getElementById('jsonPreview'),
+      itemId: document.getElementById('itemId'),
+      itemLabel: document.getElementById('itemLabel'),
+      itemDescription: document.getElementById('itemDescription'),
+      itemHotkey: document.getElementById('itemHotkey'),
+      itemAction: document.getElementById('itemAction'),
+      newRootLabel: document.getElementById('newRootLabel')
+    };
+
+    function renderHud() {
+      const { hud } = uiData;
+      els.sceneTitle.textContent = hud.title;
+      els.creditsValue.textContent = hud.credits;
+      els.cargoValue.textContent = hud.cargoSpace;
+      els.reactorModel.textContent = hud.reactor.model;
+      els.reactorOutput.textContent = hud.reactor.output;
+      els.reactorFuel.textContent = hud.reactor.fuel;
+      els.reactorUsage.textContent = hud.reactor.usage;
+      const usageTrack = document.getElementById('usageTrack');
+      usageTrack.innerHTML = '';
+      const usageCells = 34;
+      const usageActive = Math.round((hud.reactor.meter / 100) * usageCells);
+      for (let i = 0; i < usageCells; i++) {
+        const cell = document.createElement('span');
+        cell.style.display = 'inline-block';
+        cell.style.width = '10px';
+        cell.style.height = '100%';
+        cell.style.opacity = i < usageActive ? '1' : '.25';
+        usageTrack.appendChild(cell);
+      }
+      const fuelTrack = document.getElementById('fuelTrack');
+      fuelTrack.innerHTML = '';
+      for (let i = 0; i < 22; i++) {
+        const cell = document.createElement('span');
+        cell.style.opacity = i < 17 ? '1' : '.25';
+        fuelTrack.appendChild(cell);
+      }
+      els.mapSector.textContent = hud.map.sector;
+      els.mapContacts.textContent = hud.map.contacts;
+      els.targetName.textContent = hud.target.name;
+      els.targetRange.textContent = hud.target.range;
+      els.targetShields.textContent = hud.target.shields;
+      els.targetArmor.textContent = hud.target.armor;
+      els.targetWeapon.textContent = hud.target.weapon;
+      els.playerName.textContent = hud.player.name;
+      els.playerShield.textContent = hud.player.shield;
+      const shieldValue = document.getElementById('shieldValue');
+      shieldValue.textContent = '160';
+    }
+
+    function getCurrentNode() {
+      let node = uiData.menus[currentMenuKey];
+      for (const index of currentPath) node = node.items[index];
+      return node;
+    }
+
+    function renderMenu() {
+      const node = getCurrentNode();
+      els.menuHeading.textContent = node.label;
+      const crumbs = [uiData.menus[currentMenuKey].label];
+      let parent = uiData.menus[currentMenuKey];
+      currentPath.forEach(i => {
+        parent = parent.items[i];
+        crumbs.push(parent.label);
+      });
+      els.breadcrumbs.innerHTML = crumbs.map(c => `<span>${c}</span>`).join('<span>›</span>');
+      els.menuList.innerHTML = '';
+
+      if (currentPath.length) {
+        const back = document.createElement('button');
+        back.className = 'menu-item';
+        back.innerHTML = `<span><span class="hotkey">Esc</span>Back</span><small>Powrót poziom wyżej</small>`;
+        back.onclick = () => { currentPath.pop(); renderMenu(); renderScenePanel(); };
+        els.menuList.appendChild(back);
+      }
+
+      node.items.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.className = 'menu-item';
+        button.innerHTML = `
+          <span><span class="hotkey">${item.hotkey || '•'}</span>${item.label}</span>
+          <small>${item.items?.length ? `${item.items.length} sub` : item.description || item.action || ''}</small>
+        `;
+        button.onclick = () => {
+          if (item.items && item.items.length) {
+            currentPath.push(index);
+            renderMenu();
+            renderScenePanel();
+          } else if (item.action === 'close' || item.action === 'undock') {
+            closeMenu();
+          } else {
+            item.description = item.description || `Wywołano akcję: ${item.action}`;
+            renderTree();
+            renderScenePanel(item);
+          }
+        };
+        els.menuList.appendChild(button);
+      });
+    }
+
+    function renderSceneVisual(root) {
+      const visual = document.getElementById('sceneVisual');
+      const art = root.art || 'station';
+      if (art === 'station') {
+        visual.innerHTML = `<div style="position:absolute; inset:0; display:grid; place-items:center;"><div style="width:min(34vw,420px); aspect-ratio:1; border-radius:50%; background:radial-gradient(circle at center, transparent 0 28%, #d7dbd8 29% 44%, #7d8587 45% 46%, #dfe3df 47% 58%, transparent 59%), radial-gradient(circle at center, transparent 0 19%, #20262e 20% 27%, transparent 28%), conic-gradient(from 0deg, #cad0ca 0 40deg, #eef0ec 40deg 72deg, #bfc8bf 72deg 112deg, #dfe3df 112deg 150deg, #aab3ad 150deg 196deg, #edf1ec 196deg 238deg, #c4cbc5 238deg 290deg, #b3bbb3 290deg 360deg); box-shadow: inset 0 0 0 16px rgba(31,37,44,.82), 0 0 32px rgba(0,0,0,.28); position:relative; transform:translateY(-12px);"></div></div>`;
+      } else if (art === 'ship') {
+        visual.innerHTML = `<div style="position:absolute; inset:0; display:grid; place-items:center;"><div style="width:min(14vw,120px); height:min(32vw,340px); border-radius:18px; background:linear-gradient(180deg,#8d908d,#bfc1bb 12%,#7e817d 40%,#9c9e98 75%,#666863); box-shadow:inset 0 0 0 2px rgba(255,255,255,.08); position:relative;"><span style="position:absolute; bottom:-10px; left:22px; width:22px; height:22px; border-radius:50%; background:radial-gradient(circle,#ffcb8c,#b55b23 55%,#3d1c11 100%);"></span><span style="position:absolute; bottom:-10px; right:22px; width:22px; height:22px; border-radius:50%; background:radial-gradient(circle,#ffcb8c,#b55b23 55%,#3d1c11 100%);"></span></div></div>`;
+      } else {
+        visual.innerHTML = `<div style="position:absolute; inset:0; display:grid; place-items:center;"><div style="width:min(22vw,260px); height:min(28vw,320px); border-radius:24px; background:linear-gradient(180deg,#666,#929292 18%,#676767 52%,#404040 100%); transform:rotate(12deg); opacity:.72;"></div></div>`;
+      }
+    }
+
+    function renderScenePanel(forcedItem = null) {
+      const shell = document.getElementById('sceneShell');
+      const root = uiData.menus[currentMenuKey];
+      const node = forcedItem || getCurrentNode();
+      const sideTitle = document.getElementById('sidePanelTitle');
+      const infoBox = document.getElementById('sideInfoBox');
+      const sideMenuList = document.getElementById('sideMenuList');
+      const sideDetailArea = document.getElementById('sideDetailArea');
+      const showStructured = ['dock', 'salvage', 'shipStatus'].includes(currentMenuKey);
+
+      if (!showStructured) {
+        shell.classList.remove('active');
+        return;
+      }
+
+      shell.classList.add('active');
+      sideTitle.textContent = root.label;
+      infoBox.textContent = currentPath.length ? (node.description || root.description || '') : (root.description || '');
+      renderSceneVisual(root);
+      sideMenuList.innerHTML = '';
+      sideDetailArea.innerHTML = '';
+      sideDetailArea.classList.remove('active');
+
+      const items = currentPath.length ? node.items || [] : root.items || [];
+      items.forEach((item, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'side-menu-item';
+        btn.innerHTML = `<span><span class="hotkey">${item.hotkey || '•'}</span>${item.label}</span><span class="subcount">${item.items?.length ? item.items.length + ' sub' : ''}</span>`;
+        btn.onclick = () => {
+          if (item.items && item.items.length) {
+            currentPath.push(index);
+            renderMenu();
+            renderScenePanel();
+          } else if (item.action === 'close' || item.action === 'undock') {
+            closeMenu();
+          } else {
+            renderScenePanel(item);
+          }
+        };
+        sideMenuList.appendChild(btn);
+      });
+
+      if (forcedItem && forcedItem.detailItems?.length) {
+        infoBox.textContent = forcedItem.description || root.description || '';
+        sideMenuList.innerHTML = '';
+        const toolbar = document.createElement('div');
+        toolbar.className = 'detail-toolbar';
+        const backBtn = document.createElement('button');
+        backBtn.className = 'action-btn';
+        backBtn.textContent = 'Back';
+        backBtn.onclick = () => renderScenePanel();
+        toolbar.appendChild(backBtn);
+        sideDetailArea.appendChild(toolbar);
+
+        const title = document.createElement('div');
+        title.style.margin = '0 0 14px 0';
+        title.style.fontFamily = 'var(--font-display)';
+        title.style.fontSize = '26px';
+        title.textContent = forcedItem.detailTitle || forcedItem.label;
+        sideDetailArea.appendChild(title);
+
+        forcedItem.detailItems.forEach(entry => {
+          const card = document.createElement('div');
+          card.className = 'detail-card';
+          card.innerHTML = `<div class="detail-icon">item</div><div><div class="detail-title">${entry.title}</div><div class="detail-desc">${entry.desc}</div></div><div class="detail-meta">${entry.meta || ''}</div>`;
+          sideDetailArea.appendChild(card);
+        });
+        sideDetailArea.classList.add('active');
+      } else if (forcedItem && !forcedItem.detailItems?.length && !forcedItem.items?.length) {
+        infoBox.textContent = forcedItem.description || root.description || '';
+        sideMenuList.innerHTML = '';
+        sideDetailArea.classList.add('active');
+        sideDetailArea.innerHTML = `<div class="detail-empty">Brak listy danych dla tej opcji. Dodaj <strong>detailItems</strong> w JSON, jeśli ma się tu pojawić scrollowana lista komponentów, towarów albo slotów montażu.</div>`;
+      }
+    }
+
+    function openMenu(key = currentMenuKey) {
+      currentMenuKey = key;
+      currentPath = [];
+      els.menuOverlay.classList.add('active');
+      els.menuOverlay.setAttribute('aria-hidden', 'false');
+      renderMenu();
+      renderScenePanel();
+    }
+
+    function closeMenu() {
+      els.menuOverlay.classList.remove('active');
+      els.menuOverlay.setAttribute('aria-hidden', 'true');
+      const shell = document.getElementById('sceneShell');
+      if (shell) shell.classList.remove('active');
+    }
+
+    function visitNodes(rootKey, cb, node = uiData.menus[rootKey], path = []) {
+      cb(node, rootKey, path);
+      node.items?.forEach((child, index) => visitNodes(rootKey, cb, child, [...path, index]));
+    }
+
+    function makeNodeId(rootKey, path) {
+      return `${rootKey}:${path.join('.') || 'root'}`;
+    }
+
+    function findNodeBySelection() {
+      if (!selectedNodeId) return null;
+      const [rootKey, pathStr] = selectedNodeId.split(':');
+      let node = uiData.menus[rootKey];
+      if (!node) return null;
+      const path = pathStr === 'root' ? [] : pathStr.split('.').map(Number);
+      for (const idx of path) node = node.items[idx];
+      return { rootKey, path, node };
+    }
+
+    function renderTree() {
+      els.menuTree.innerHTML = '';
+      Object.keys(uiData.menus).forEach(rootKey => {
+        visitNodes(rootKey, (node, rk, path) => {
+          const id = makeNodeId(rk, path);
+          const btn = document.createElement('button');
+          btn.className = id === selectedNodeId ? 'active' : '';
+          btn.style.paddingLeft = `${12 + path.length * 18}px`;
+          btn.textContent = `${path.length ? '↳ ' : ''}${node.label}`;
+          btn.onclick = () => {
+            selectedNodeId = id;
+            fillForm();
+            renderTree();
+          };
+          els.menuTree.appendChild(btn);
+        });
+      });
+      els.jsonPreview.textContent = JSON.stringify(uiData, null, 2);
+      if (!selectedNodeId) {
+        selectedNodeId = `${currentMenuKey}:root`;
+        fillForm();
+      }
+    }
+
+    function fillForm() {
+      const result = findNodeBySelection();
+      if (!result) return;
+      const { node } = result;
+      els.itemId.value = node.id || '';
+      els.itemLabel.value = node.label || '';
+      els.itemDescription.value = node.description || '';
+      els.itemHotkey.value = node.hotkey || '';
+      els.itemAction.value = node.action || '';
+    }
+
+    function slugify(value) {
+      return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'new-item';
+    }
+
+    document.getElementById('editorToggle').addEventListener('click', () => {
+      els.editorPanel.classList.toggle('open');
+    });
+
+    document.getElementById('openCurrentMenu').addEventListener('click', () => openMenu(currentMenuKey));
+    document.getElementById('closeMenu').addEventListener('click', closeMenu);
+    els.menuOverlay.addEventListener('click', (e) => { if (e.target === els.menuOverlay) closeMenu(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (els.menuOverlay.classList.contains('active') && currentPath.length) {
+          currentPath.pop();
+          renderMenu();
+          renderScenePanel();
+        } else if (els.menuOverlay.classList.contains('active')) {
+          closeMenu();
+        } else if (els.editorPanel.classList.contains('open')) {
+          els.editorPanel.classList.remove('open');
+        }
+      }
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentMenuKey = btn.dataset.preset;
+        renderTree();
+        openMenu(currentMenuKey);
+      });
+    });
+
+    document.getElementById('saveItem').addEventListener('click', () => {
+      const result = findNodeBySelection();
+      if (!result) return;
+      const { node, rootKey, path } = result;
+      node.id = els.itemId.value.trim() || slugify(els.itemLabel.value);
+      node.label = els.itemLabel.value.trim() || 'Untitled';
+      node.description = els.itemDescription.value.trim();
+      if ('hotkey' in node || els.itemHotkey.value.trim()) node.hotkey = els.itemHotkey.value.trim().slice(0, 1).toUpperCase();
+      if ('action' in node || els.itemAction.value.trim()) node.action = els.itemAction.value.trim();
+      if (path.length === 0) currentMenuKey = rootKey;
+      renderTree();
+      renderMenu();
+      renderScenePanel();
+    });
+
+    document.getElementById('addChild').addEventListener('click', () => {
+      const result = findNodeBySelection();
+      if (!result) return;
+      const { node } = result;
+      node.items = node.items || [];
+      const newItem = {
+        id: `item-${node.items.length + 1}`,
+        label: `New Option ${node.items.length + 1}`,
+        hotkey: 'N',
+        description: 'Nowa edytowalna opcja',
+        action: 'noop',
+        items: []
+      };
+      node.items.push(newItem);
+      selectedNodeId = makeNodeId(result.rootKey, [...result.path, node.items.length - 1]);
+      renderTree();
+      fillForm();
+      renderMenu();
+    });
+
+    document.getElementById('deleteItem').addEventListener('click', () => {
+      const result = findNodeBySelection();
+      if (!result || result.path.length === 0) return;
+      let parent = uiData.menus[result.rootKey];
+      const parentPath = result.path.slice(0, -1);
+      parentPath.forEach(i => parent = parent.items[i]);
+      parent.items.splice(result.path.at(-1), 1);
+      selectedNodeId = `${result.rootKey}:root`;
+      renderTree();
+      fillForm();
+      renderMenu();
+    });
+
+    document.getElementById('addRoot').addEventListener('click', () => {
+      const label = els.newRootLabel.value.trim();
+      if (!label) return;
+      const key = slugify(label).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      uiData.menus[key] = { id: key, label, description: 'Nowe menu root', items: [] };
+      currentMenuKey = key;
+      selectedNodeId = `${key}:root`;
+      els.newRootLabel.value = '';
+      renderTree();
+      fillForm();
+      renderMenu();
+    });
+
+    renderHud();
+    renderTree();
+    fillForm();
+    openMenu(currentMenuKey);
+  </script>
+</body>
+</html>
