@@ -69,9 +69,9 @@ Kryteria zamknięcia Etapu 5: `11_etap5-specyfikacja.md`, sekcja 12
 
 ## Etap 5.5
 `engine/input/`, `systems/flight/`, `dev/` (rozszerzenie), `engine/renderer/`, `presentation/scene/`, `presentation/renderables/`
-- wdrożenie Flight Model (fizyka Newtonowska, thrustery, obrót, Flight Assist),
+- wdrożenie Flight Model (fizyka Newtonowska, thrustery, obrót, Auto-Stop HOLD),
 - wstępny model przemieszczania gracza do testowania,
-- dev mode toggle — gdy aktywny, powrót do swobodnego przesuwania po planszy bez Flight Model,
+- dev mode toggle — przełącza tryb kamery (flight follow ↔ free camera), bez wyłączania Flight Model,
 - publiczne gettery statystyk lotu w ship (velocity, acceleration, heading),
 - rozszerzenie 5.5.1: adaptacyjna skala renderu i dirty sort (`WorldLayer`),
 - rozszerzenie 5.5.2: anti-shimmer dla obiektów statycznych (`pixel-snap-static`),

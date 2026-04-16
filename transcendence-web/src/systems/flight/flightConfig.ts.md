@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik definiuje kontrakt konfiguracji modelu lotu oraz domyslny zestaw parametrow lotu. Parametry obejmuja ciag, obrot, limit predkosci i ustawienia Flight Assist.
+Plik definiuje kontrakt konfiguracji modelu lotu oraz domyslny zestaw parametrow lotu. Parametry obejmuja ciag, obrot, limit predkosci oraz prog deadzone wykorzystywany przez Auto-Stop HOLD.
 
 ## Co eksportuje
 - Interfejs FlightConfig

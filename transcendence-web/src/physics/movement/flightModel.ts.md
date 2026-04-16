@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik implementuje czysta funkcje aktualizacji modelu lotu statku na podstawie wejscia i konfiguracji. Zawiera tez pomocnicze obliczenie przyspieszenia Flight Assist.
+Plik implementuje czysta funkcje aktualizacji modelu lotu statku na podstawie wejscia i konfiguracji. Wspiera manualne thrustery oraz Auto-Stop w trybie HOLD.
 
 ## Co eksportuje
 - Interfejs FlightUpdateResult
@@ -22,9 +22,9 @@ const result = computeFlightUpdate(
     rotateRight: false,
     rearThruster: true,
     frontThruster: false,
+    autoStop: false,
   },
   DEFAULT_FLIGHT_CONFIG,
-  true,
   1 / 60,
 );
 ```

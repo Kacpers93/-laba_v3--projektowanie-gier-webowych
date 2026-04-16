@@ -1,4 +1,4 @@
-# Etap 5.5 — Specyfikacja: Flight Model, sterowanie statkiem gracza i dev mode toggle
+# Etap 5.5 — Specyfikacja: Flight Model, sterowanie statkiem gracza, Auto-Stop HOLD i dev mode toggle
 
 ## Audyt stanu obecnego
 
@@ -11,7 +11,7 @@
 | `12_etap5-podstawa-specyfikacji.md` | ✅ Odczytane | Szkic wstępny, sformalizowany przez 11_etap5 |
 | `00_input-and-keybindings.md` | ✅ Odczytane | Pełna architektura input: akcje, tryby, moduły |
 | `00_extra_00_input-and-keybindings.md` | ✅ Odczytane | Szczegóły implementacyjne ControlsScreen, styl UI |
-| `01_flight-model.md` | ✅ Odczytane | Fizyka Newtonowska, thrustery, obrót, Flight Assist, soft drag |
+| `01_flight-model.md` | ✅ Odczytane | Fizyka Newtonowska, thrustery, obrót, soft drag (opis FA zastąpiony w Etapie 5.5 przez Auto-Stop HOLD) |
 | `02_ship-slots-and-mass.md` | ✅ Odczytane | System masy — kontekst, poza zakresem 5.5 |
 | `03_reactor-system.md` | ✅ Odczytane | System reaktora — kontekst, poza zakresem 5.5 |
 | `04_ship-capture.md` | ✅ Odczytane | Przejęcie statku — kontekst, poza zakresem 5.5 |
@@ -44,7 +44,7 @@
 
 ## 1. Cel
 
-Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej z integracją z istniejącą pętlą gry i renderem. Po zamknięciu Etapu 5.5 gracz steruje statkiem na canvasie klawiszami WASD + Ctrl, kamera podąża za statkiem, a przełącznik dev mode pozwala wrócić do swobodnego przesuwania kamery strzałkami.
+Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej z integracją z istniejącą pętlą gry i renderem. Po zamknięciu Etapu 5.5 gracz steruje statkiem na canvasie klawiszami WASD + Ctrl, gdzie Ctrl aktywuje Auto-Stop wyłącznie w trybie HOLD, kamera podąża za statkiem w trybie flight mode, a dev mode toggle przełącza tryb kamery bez wyłączania modelu lotu.
 
 ---
 
@@ -66,11 +66,11 @@ Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej
 
 | Parametr | Wartość |
 |---|---|
-| Statek gracza sterowany klawiaturą | WASD + Ctrl — obrót, thrust rear/front, toggle Flight Assist |
+| Statek gracza sterowany klawiaturą | WASD + Ctrl — obrót, rear/front thruster, Auto-Stop HOLD |
 | Publiczne gettery lotu | `velocity: Vector2`, `acceleration: Vector2`, `heading: number` (rad) |
 | Kamera śledząca gracza | `camera.follow(playerShip.position)` w trybie flight |
 | Dev mode toggle | Przełącznik w Dev Overlay: flight mode ↔ free camera mode |
-| Sekcja „Flight" w Dev Overlay | Metryki: speed, heading, FA status, position, velocity |
+| Sekcja „Flight" w Dev Overlay | Metryki: speed, heading, auto-stop status, position, velocity |
 
 ---
 
@@ -80,13 +80,14 @@ Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej
 |---|---|
 | Brak encji `player-ship` w seedzie | Tryb flight wyłączony. Gra startuje w free camera mode. `console.warn` z komunikatem. |
 | `dt = 0` | Brak zmian w pozycji i prędkości. |
-| Prędkość < 0.5 px/s przy FA ON | Flight Assist nie działa (próg deadzone). |
+| Prędkość < 0.5 px/s przy Auto-Stop HOLD | Auto-Stop nie wykonuje dodatkowego hamowania (próg deadzone). |
 | Prędkość > `maxSpeed × 1.1` | Soft drag redukuje prędkość zgodnie z `01_flight-model.md`. |
 | Przełączenie na tryb `ui` lub `locked` | Model lotu NIE jest aktualizowany. Statek zachowuje aktualną prędkość i pozycję. |
-| `toggle-flight-assist` | Przełącza FA ON/OFF. Stan persystuje w pamięci runtime (nie w localStorage). |
+| `toggle-flight-assist` (`Ctrl`) | W aktualnym kodzie to akcja hold (`isKeyDown`): Auto-Stop działa tylko podczas trzymania klawisza. |
 | Dev mode toggle → free camera | Kamera przestaje śledzić gracza. Strzałki przesuwają kamerę. Model lotu nadal aktualizowany. |
 | Dev mode toggle → flight mode | Kamera wraca do śledzenia gracza. Strzałki nie przesuwają kamery. |
-| Dwa przeciwne thrustery naraz (W+S) | Oba działają jednocześnie — siły się kompensują. |
+| Dwa przeciwne thrustery naraz (W+S) bez Auto-Stop | Oba działają jednocześnie — siły częściowo się kompensują. |
+| W/S podczas Auto-Stop HOLD | Manualne thrustery są pomijane; hamowanie prowadzi logika Auto-Stop. |
 
 ---
 
@@ -106,17 +107,17 @@ Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej
 | `DevOverlayPanel` | `dev/DevOverlayPanel.ts` | ✅ Gotowy — sekcje, metryki, kontrolki |
 | Seed `sol-001.json` | `public/world/systems/sol-001.json` | ✅ Gotowy — `player-ship-01` z `static: false` |
 
-### Czego brakuje
+### Stan wdrożenia Etapu 5.5
 
-1. **Brak klasy `PlayerShipEntity`** — `WorldEntity` nie ma `update()` ani parametrów lotu.
-2. **Brak modelu lotu** — nie istnieje `flightModel.ts` ani żadna fizyka Newtonowska.
-3. **Brak Flight Assist** — nie istnieje żaden system automatycznego hamowania.
-4. **Brak soft drag** — brak ograniczenia prędkości maksymalnej.
-5. **Brak mapowania akcji lotu na klawisze** — `GameInput` używa surowych klawiszy.
-6. **Brak śledzenia kamery za graczem** — kamera poruszana strzałkami.
-7. **Brak dev mode toggle** — nie ma przełącznika flight/free camera.
-8. **Brak getterów statystyk lotu** — `WorldEntity` nie eksponuje velocity, acceleration, heading.
-9. **Brak sekcji Flight w Dev Overlay**.
+1. **`PlayerShipEntity` istnieje** i deleguje fizykę do `computeFlightUpdate()`.
+2. **`flightModel.ts` istnieje** i realizuje obrót, thrustery, Auto-Stop HOLD i soft drag.
+3. **Auto-Stop jest mechaniką HOLD na Ctrl** (odczyt przez `isKeyDown`).
+4. **Front thruster działa** przy `S`, gdy Auto-Stop nie jest trzymany.
+5. **Mapowanie akcji lotu istnieje** w `FlightActions.ts` (v0, bez rebindowania).
+6. **Śledzenie kamery za graczem działa** przy aktywnym `flight-mode`.
+7. **Dev mode toggle istnieje** i przełącza wyłącznie tryb kamery.
+8. **Gettery statystyk lotu istnieją**: `speed`, `currentVelocity`, `acceleration`, `heading`.
+9. **Sekcja Flight w Dev Overlay istnieje** i raportuje stan lotu oraz Auto-Stop HOLD/OFF.
 
 ---
 
@@ -125,12 +126,12 @@ Dostarczyć działający model lotu statku gracza oparty na fizyce Newtonowskiej
 ### Wchodzi w Etap 5.5
 
 1. Klasa `PlayerShipEntity` rozszerzająca `WorldEntity` o `update(dt)` z fizyką lotu.
-2. Moduł `flightModel.ts` — czysta fizyka: integracja Newtonowska, obrót, Flight Assist, soft drag.
+2. Moduł `flightModel.ts` — czysta fizyka: integracja Newtonowska, obrót, Auto-Stop HOLD, soft drag.
 3. Moduł `flightConfig.ts` — stałe hardkodowane parametry lotu (v0).
 4. Minimalne `FlightActions.ts` — stałe akcji lotu i domyślne mapowanie klawiszy (v0).
 5. Rozszerzenie `GameInput` o odczyt akcji lotu przez stałe z `FlightActions`.
 6. Kamera śledząca gracza w trybie flight.
-7. Dev mode toggle (checkbox w Dev Overlay): flight ↔ free camera.
+7. Dev mode toggle (checkbox w Dev Overlay): flight ↔ free camera, bez zatrzymywania modelu lotu.
 8. Publiczne gettery: `velocity`, `acceleration`, `heading` w `PlayerShipEntity`.
 9. Sekcja „Flight" w Dev Overlay z metrykami lotu.
 10. Integracja z `AppShell.start()` — wykrywanie `player-ship` w seedzie, tworzenie `PlayerShipEntity`.
@@ -190,7 +191,7 @@ export interface FlightConfig {
   /** Współczynnik soft drag powyżej maxSpeed × 1.1. */
   readonly softDragCoefficient: number;
 
-  /** Próg deadzone dla Flight Assist [px/s]. */
+  /** Próg deadzone używany przez Auto-Stop HOLD [px/s]. */
   readonly flightAssistDeadzone: number;
 }
 
@@ -204,6 +205,8 @@ export const DEFAULT_FLIGHT_CONFIG: FlightConfig = {
   flightAssistDeadzone: 0.5,
 };
 ```
+
+Nota migracyjna: historyczna nazwa pola `flightAssistDeadzone` pozostała w kodzie, ale jego bieżąca semantyka to próg aktywacji i domykania prędkości dla Auto-Stop HOLD.
 
 ### 8.2. `PlayerShipEntity`
 
@@ -219,9 +222,6 @@ import type { EntityCategory } from '@entities/base/EntityCategory';
 export class PlayerShipEntity extends WorldEntity {
   /** Bieżące przyspieszenie ramki (po update). */
   private currentAcceleration: Vector2 = { x: 0, y: 0 };
-
-  /** Stan Flight Assist. */
-  private flightAssistEnabled = true;
 
   /** Konfiguracja lotu. */
   public readonly flightConfig: FlightConfig;
@@ -264,16 +264,6 @@ export class PlayerShipEntity extends WorldEntity {
     return this.rotation;
   }
 
-  /** Czy Flight Assist jest włączony. */
-  public get isFlightAssistEnabled(): boolean {
-    return this.flightAssistEnabled;
-  }
-
-  /** Przełącza Flight Assist ON/OFF. */
-  public toggleFlightAssist(): void {
-    this.flightAssistEnabled = !this.flightAssistEnabled;
-  }
-
   /**
    * Aktualizacja fizyki lotu.
    * @param dt - Delta czasu z pętli fizyki [s].
@@ -290,6 +280,7 @@ export interface FlightInput {
   rotateRight: boolean;
   rearThruster: boolean;
   frontThruster: boolean;
+  autoStop: boolean;
 }
 ```
 
@@ -324,7 +315,7 @@ export type FlightActionId = keyof typeof FLIGHT_KEY_MAP;
 | `rotate-right` | `game` | Aktywna wyłącznie w trybie game. |
 | `rear-thruster` | `game` | Aktywna wyłącznie w trybie game. |
 | `front-thruster` | `game` | Aktywna wyłącznie w trybie game. |
-| `toggle-flight-assist` | `game` | Aktywna wyłącznie w trybie game. Akcja jednorazowa (toggle na keydown, nie trzymanie). |
+| `toggle-flight-assist` | `game` | Aktywna wyłącznie w trybie game. Historyczny identyfikator klawisza; semantyka runtime: Auto-Stop HOLD podczas trzymania Ctrl. |
 
 ### 8.4. Kontrakt przełączania trybów wejścia
 
@@ -348,7 +339,7 @@ Dev toggle: flight → free     -> game + free camera
 Dev toggle: free → flight     -> game + flight mode
 ```
 
-`toggle-flight-assist` — przechwytywany w `handleKeyDown`, dodawany do `bufferedActions`, przetwarzany w `update()`. NIE jest trzymanym klawiszem (`isKeyDown`), lecz jednorazową akcją.
+`toggle-flight-assist` — identyfikator historyczny. W aktualnym runtime jest odczytywany przez `isKeyDown(...)` i działa jako hold (Auto-Stop aktywny tylko podczas trzymania Ctrl).
 
 ---
 
@@ -366,6 +357,7 @@ W `onFixedUpdate(dt)`:
    - rotateRight = gameInput.isKeyDown(FLIGHT_KEY_MAP['rotate-right'])
    - rearThruster = gameInput.isKeyDown(FLIGHT_KEY_MAP['rear-thruster'])
    - frontThruster = gameInput.isKeyDown(FLIGHT_KEY_MAP['front-thruster'])
+  - autoStop = gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist'])
 4. Przekaż FlightInput do playerShip.updateFlight(dt, input)
 ```
 
@@ -395,49 +387,78 @@ export function computeFlightUpdate(
   currentRotation: number,
   input: FlightInput,
   config: FlightConfig,
-  flightAssistEnabled: boolean,
   dt: number,
 ): FlightUpdateResult {
-  // 1. Obrót
+  const autoStopFineSpeed = 24;
+  const autoStopAlignmentToBrake = 0.9;
+  const autoStopRotationEpsilon = 0.03;
+  const currentSpeed = Math.hypot(currentVelocity.x, currentVelocity.y);
+
+  // 1. Obrót: manualny albo naprowadzanie Auto-Stop
   let newRotation = currentRotation;
-  if (input.rotateLeft) {
-    newRotation -= config.rotationSpeed * dt;
-  }
-  if (input.rotateRight) {
-    newRotation += config.rotationSpeed * dt;
+  if (input.autoStop && currentSpeed >= config.flightAssistDeadzone) {
+    const targetHeading = Math.atan2(-currentVelocity.y, -currentVelocity.x);
+    const rotationFactor = currentSpeed > autoStopFineSpeed ? 1 : 0.35;
+    newRotation = rotateTowards(
+      currentRotation,
+      targetHeading,
+      config.rotationSpeed * rotationFactor * dt,
+    );
+
+    if (Math.abs(shortestAngleDelta(newRotation, targetHeading)) <= autoStopRotationEpsilon) {
+      newRotation = targetHeading;
+    }
+  } else {
+    if (input.rotateLeft) {
+      newRotation -= config.rotationSpeed * dt;
+    }
+    if (input.rotateRight) {
+      newRotation += config.rotationSpeed * dt;
+    }
   }
 
-  // 2. Oblicz przyspieszenie z thrusterów
+  // 2. Przyspieszenie z Auto-Stop i manualnych thrusterów
   const headingX = Math.cos(newRotation);
   const headingY = Math.sin(newRotation);
 
   let ax = 0;
   let ay = 0;
 
-  if (input.rearThruster) {
+  if (input.autoStop && currentSpeed >= config.flightAssistDeadzone) {
+    const stopDirectionX = -currentVelocity.x / currentSpeed;
+    const stopDirectionY = -currentVelocity.y / currentSpeed;
+    const alignment = headingX * stopDirectionX + headingY * stopDirectionY;
+
+    if (currentSpeed > autoStopFineSpeed && alignment >= autoStopAlignmentToBrake) {
+      ax += headingX * config.rearThrust;
+      ay += headingY * config.rearThrust;
+    } else if (currentSpeed <= autoStopFineSpeed) {
+      const fineBrakeAccel = Math.min(config.frontThrust, currentSpeed / Math.max(dt, 1e-6));
+      ax += stopDirectionX * fineBrakeAccel;
+      ay += stopDirectionY * fineBrakeAccel;
+    }
+  }
+
+  if (input.rearThruster && !input.autoStop) {
     ax += headingX * config.rearThrust;
     ay += headingY * config.rearThrust;
   }
 
-  if (input.frontThruster) {
+  if (input.frontThruster && !input.autoStop) {
     ax -= headingX * config.frontThrust;
     ay -= headingY * config.frontThrust;
   }
 
-  // 3. Flight Assist
-  if (flightAssistEnabled) {
-    const faAccel = computeFlightAssist(
-      currentVelocity, newRotation, config, dt,
-    );
-    ax += faAccel.x;
-    ay += faAccel.y;
-  }
-
-  // 4. Integracja Eulera
+  // 3. Integracja Eulera
   let newVx = currentVelocity.x + ax * dt;
   let newVy = currentVelocity.y + ay * dt;
 
-  // 5. Soft drag
+  if (input.autoStop && Math.hypot(newVx, newVy) < config.flightAssistDeadzone) {
+    newVx = 0;
+    newVy = 0;
+  }
+
+  // 4. Soft drag
   const speed = Math.hypot(newVx, newVy);
   const softLimit = config.maxSpeed * 1.1;
   if (speed > softLimit) {
@@ -451,56 +472,6 @@ export function computeFlightUpdate(
     newRotation,
     acceleration: { x: ax, y: ay },
   };
-}
-
-/**
- * Oblicza przyspieszenie Flight Assist.
- * FA hamuje prędkość boczną i wsteczną, nie hamuje ruchu do przodu.
- */
-function computeFlightAssist(
-  velocity: Vector2,
-  rotation: number,
-  config: FlightConfig,
-  _dt: number,
-): Vector2 {
-  const speed = Math.hypot(velocity.x, velocity.y);
-  if (speed < config.flightAssistDeadzone) {
-    return { x: 0, y: 0 };
-  }
-
-  const headingX = Math.cos(rotation);
-  const headingY = Math.sin(rotation);
-
-  // Składowa do przodu (rzut velocity na heading)
-  const forwardComponent = velocity.x * headingX + velocity.y * headingY;
-
-  // Składowa boczna (rzut velocity na heading + 90°)
-  const lateralX = -headingY;
-  const lateralY = headingX;
-  const lateralComponent = velocity.x * lateralX + velocity.y * lateralY;
-
-  let ax = 0;
-  let ay = 0;
-
-  // Hamuj ruch wsteczny (front thruster)
-  if (forwardComponent < -1) {
-    ax += headingX * config.frontThrust;
-    ay += headingY * config.frontThrust;
-  }
-
-  // Hamuj boczny drift
-  if (lateralComponent > 1) {
-    // Drift w prawo — hamuj siłą w lewo
-    ax -= lateralX * config.frontThrust;
-    ay -= lateralY * config.frontThrust;
-  }
-  if (lateralComponent < -1) {
-    // Drift w lewo — hamuj siłą w prawo
-    ax += lateralX * config.frontThrust;
-    ay += lateralY * config.frontThrust;
-  }
-
-  return { x: ax, y: ay };
 }
 ```
 
@@ -553,7 +524,7 @@ if (devFlightMode && playerShipEntity) {
 | `heading` | `playerShip.heading` | `N.1°` (konwersja rad → deg) |
 | `velocity` | `playerShip.currentVelocity` | `(N.1, N.1)` |
 | `acceleration` | `playerShip.acceleration` | `(N.1, N.1)` |
-| `flight-assist` | `playerShip.isFlightAssistEnabled` | `ON` / `OFF` |
+| `flight-assist` | `gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist'])` | `AUTO-STOP (HOLD)` / `OFF` |
 | `position` | `playerShip.position` | `(N.1, N.1)` |
 
 ### 11.2. Dev mode toggle
@@ -568,24 +539,26 @@ Umieszczenie: istniejąca sekcja „Dev Flags" w Dev Overlay.
 
 ## 12. Kryteria zamknięcia Etapu 5.5
 
+### Co działa po `npm run dev`
+
 | # | Kryterium | Opis | Kryterium spełnione? |
 |---|---|---|---|
 | K1 | Statek gracza porusza się | Po wciśnięciu W statek gracza przyspiesza w kierunku dzioba. | Tak |
-| K2 | Statek gracza hamuje | Po wciśnięciu S statek hamuje thrusterem front (siła 0.3× rear). | Tak |
+| K2 | Front thruster działa | Po wciśnięciu S (bez Ctrl) statek hamuje thrusterem front (siła 0.3× rear). | Tak |
 | K3 | Obrót działa | A i D obracają statek z prędkością `rotationSpeed`. | Tak |
-| K4 | Fizyka Newtonowska | Po puszczeniu W statek leci z aktualną prędkością bez spowolnienia (FA OFF). | Tak |
-| K5 | Flight Assist ON | Przy FA ON statek automatycznie hamuje drift boczny i ruch wsteczny. | Tak |
-| K6 | Flight Assist toggle | Ctrl przełącza FA ON/OFF. Stan widoczny w Dev Overlay: „ON"/„OFF". | Tak |
+| K4 | Fizyka Newtonowska | Po puszczeniu W i bez Ctrl statek leci z aktualną prędkością bez automatycznego spowolnienia. | Tak |
+| K5 | Auto-Stop HOLD | Podczas trzymania Ctrl statek automatycznie obraca się przeciwnie do wektora prędkości i hamuje do zatrzymania. | Tak |
+| K6 | Auto-Stop tylko na HOLD | Zwolnienie Ctrl natychmiast wyłącza Auto-Stop. Brak trybu przełączanego ON/OFF. | Tak |
 | K7 | Soft drag | Powyżej `maxSpeed × 1.1` prędkość jest hamowana soft dragiem. | Tak |
 | K8 | Kamera śledzi gracza | W trybie flight kamera podąża za pozycją statku gracza. | Tak |
 | K9 | Dev mode: free camera | Po wyłączeniu checkboxa „flight-mode" kamera wraca do sterowania strzałkami. | Tak |
 | K10 | Dev mode: powrót do flight | Po ponownym włączeniu checkboxa kamera wraca do śledzenia gracza. | Tak |
-| K11 | Gettery lotu | `velocity`, `acceleration`, `heading` — dostępne jako publiczne gettery na `PlayerShipEntity`. | Tak |
-| K12 | Dev Overlay: sekcja Flight | Sekcja pokazuje speed, heading, velocity, acceleration, FA status, position. | Tak |
-| K13 | Brak regresji Etapu 5 | Seed loader, world rendering, dev overlay (sekcje System, Entities, Render, Cache, Assets) — działają bez zmian. | Tak |
-| K14 | Brak regresji wcześniejszych etapów | Tło, paralaksa, debug grid, culling, interpolacja, cache — działają bez zmian. | Tak |
-| K15 | Kompilacja | `npm run type-check` → 0 errors. `npm run build` → buduje bez błędów. | Tak |
-| K16 | Brak player-ship fallback | Gdy brak encji player-ship w seedzie, gra startuje w free camera mode bez crashu. | Tak |
+| K11 | Gettery lotu | `velocity`, `acceleration`, `heading` są dostępne jako publiczne gettery na `PlayerShipEntity`. | Tak |
+| K12 | Dev Overlay: sekcja Flight | Sekcja pokazuje speed, heading, velocity, acceleration, status `AUTO-STOP (HOLD)`/`OFF`, position. | Tak |
+| K13 | Brak regresji Etapu 5 | Seed loader, world rendering, dev overlay (sekcje System, Entities, Render, Cache, Assets) działają bez zmian. | Tak |
+| K14 | Brak regresji wcześniejszych etapów | Tło, paralaksa, debug grid, culling, interpolacja i cache działają bez zmian. | Tak |
+| K15 | Kompilacja | `npm run type-check` zwraca 0 errors oraz `npm run build` kończy się bez błędów. | Tak |
+| K16 | Brak player-ship fallback | Gdy brak encji `player-ship` w seedzie, gra startuje w free camera mode bez crashu. | Tak |
 
 ### Artefakty zamykające Etap 5.5
 
@@ -597,7 +570,7 @@ Umieszczenie: istniejąca sekcja „Dev Flags" w Dev Overlay.
 | `world/entities/PlayerShipEntity.ts` — klasa statku gracza | NOWY |
 | `world/entities/index.ts` — re-eksport rozszerzony | ZMIANA |
 | `app/AppShell.ts` — integracja lotu, kamera follow, dev toggle | ZMIANA |
-| Ewentualne drobne zmiany w `GameInput.ts` — obsługa `toggle-flight-assist` jako buforowanej akcji | ZMIANA |
+| `GameInput.ts` — bez zmian semantyki buforowanej akcji dla lotu; wejście Auto-Stop odczytywane przez `isKeyDown` | ZGODNE Z KODEM |
 | `npm run type-check` | 0 errors |
 | `npm run build` | Buduje bez błędów |
 
@@ -607,24 +580,24 @@ Umieszczenie: istniejąca sekcja „Dev Flags" w Dev Overlay.
 
 ### Testy ręczne
 
-| # | Test | Oczekiwany wynik |
-|---|---|---|
-| M1 | `npm run dev`, wciśnij W | Statek gracza przyspiesza w kierunku dzioba i oddala się od początkowej pozycji. |
-| M2 | Wciśnij W, puść, czekaj (FA OFF) | Statek leci z aktualną prędkością bez spowolnienia (drift Newtonowski). |
-| M3 | Wciśnij A/D podczas W | Statek obraca się płynnie. Kierunek thrustu zmienia się z obrotem. |
-| M4 | Wciśnij S | Statek hamuje w osi heading (siła słabsza niż W). |
-| M5 | Wciśnij Ctrl | FA przełącza się. Dev Overlay: Flight → flight-assist zmienia się ON/OFF. |
-| M6 | FA ON, wciśnij W, puść, czekaj | Po puszczeniu W statek automatycznie hamuje drift boczny. |
-| M7 | Wciśnij i trzymaj W do przekroczenia maxSpeed | Prędkość stabilizuje się wokół maxSpeed dzięki soft drag. |
-| M8 | Obserwuj kamerę | Kamera śledzi statek gracza w trybie flight. |
-| M9 | Dev Overlay → Dev Flags → odznacz flight-mode | Kamera przestaje śledzić. Strzałki przesuwają kamerę. |
-| M10 | Dev Overlay → Dev Flags → zaznacz flight-mode | Kamera wraca do śledzenia gracza. |
-| M11 | Dev Overlay → Flight → metryki | Speed, heading, velocity, acceleration aktualizują się w czasie rzeczywistym. |
-| M12 | Usuń `player-ship-01` z seeda, przeładuj | Gra startuje w free camera mode. `console.warn` w konsoli. Sekcja Flight: „no player-ship". |
-| M13 | `npm run type-check` | 0 errors. |
-| M14 | `npm run build` | Buduje bez błędów. |
-| M15 | Sprawdź regresję: Dev Overlay → System | Sekcja System (entities, asteroids, load time) działa bez zmian. |
-| M16 | Sprawdź regresję: tło, paralaksa, culling | Brak zmian wizualnych, brak crashy. |
+| # | Test | Oczekiwany wynik |  Kryterium spełnione? |
+|---|---|---|---|
+| M1 | `npm run dev`, wciśnij W | Statek gracza przyspiesza w kierunku dzioba i oddala się od początkowej pozycji. | Tak |
+| M2 | Wciśnij W, puść, czekaj (bez Ctrl) | Statek leci z aktualną prędkością bez automatycznego spowolnienia (drift Newtonowski). | Tak |
+| M3 | Wciśnij A/D podczas W | Statek obraca się płynnie. Kierunek thrustu zmienia się z obrotem. | Tak |
+| M4 | Wciśnij S (bez Ctrl) | Statek hamuje w osi heading front thrusterem (siła słabsza niż W). | Tak |
+| M5 | Wciśnij i trzymaj Ctrl | Auto-Stop aktywny tylko podczas trzymania. Dev Overlay: Flight → `AUTO-STOP (HOLD)`. | Tak |
+| M6 | Trzymaj Ctrl podczas driftu | Statek automatycznie obraca się do wektora hamowania i redukuje prędkość do zera. | Tak |
+| M7 | Wciśnij i trzymaj W do przekroczenia maxSpeed | Prędkość stabilizuje się wokół maxSpeed dzięki soft drag. | Tak |
+| M8 | Obserwuj kamerę | Kamera śledzi statek gracza w trybie flight. | Tak |
+| M9 | Dev Overlay → Dev Flags → odznacz flight-mode | Kamera przestaje śledzić. Strzałki przesuwają kamerę. | Tak |
+| M10 | Dev Overlay → Dev Flags → zaznacz flight-mode | Kamera wraca do śledzenia gracza. | Tak |
+| M11 | Dev Overlay → Flight → metryki | Speed, heading, velocity, acceleration aktualizują się w czasie rzeczywistym. | Tak |
+| M12 | Usuń `player-ship-01` z seeda, przeładuj | Gra startuje w free camera mode. `console.warn` w konsoli. Sekcja Flight: „no player-ship". | Tak |
+| M13 | `npm run type-check` | 0 errors. | Tak |
+| M14 | `npm run build` | Buduje bez błędów. | Tak |
+| M15 | Sprawdź regresję: Dev Overlay → System | Sekcja System (entities, asteroids, load time) działa bez zmian. | Tak |
+| M16 | Sprawdź regresję: tło, paralaksa, culling | Brak zmian wizualnych, brak crashy. | Tak |
 
 ### Kandydaci do automatyzacji
 
@@ -633,8 +606,8 @@ Umieszczenie: istniejąca sekcja „Dev Flags" w Dev Overlay.
 | A1 | `computeFlightUpdate` z `rearThruster=true` daje przyspieszenie w kierunku heading | `flightModel.ts` |
 | A2 | `computeFlightUpdate` z `frontThruster=true` daje przyspieszenie przeciwne do heading | `flightModel.ts` |
 | A3 | `computeFlightUpdate` z `rotateLeft=true` zmniejsza rotation | `flightModel.ts` |
-| A4 | `computeFlightUpdate` bez inputu zachowuje prędkość (FA OFF) | `flightModel.ts` |
-| A5 | Flight Assist hamuje drift boczny | `flightModel.ts` |
+| A4 | `computeFlightUpdate` bez inputu i bez `autoStop` zachowuje prędkość | `flightModel.ts` |
+| A5 | `computeFlightUpdate` z `autoStop=true` redukuje prędkość i domyka do zera przy deadzone | `flightModel.ts` |
 | A6 | Soft drag redukuje prędkość powyżej `maxSpeed × 1.1` | `flightModel.ts` |
 | A7 | `computeFlightUpdate` z `dt=0` zwraca bieżący stan bez zmian | `flightModel.ts` |
 
@@ -650,21 +623,20 @@ Krok 2: Akcje lotu
          systems/flight/FlightActions.ts — FLIGHT_KEY_MAP + FlightActionId
          ↓
 Krok 3: Model fizyki lotu
-         physics/movement/flightModel.ts — computeFlightUpdate(), computeFlightAssist()
+         physics/movement/flightModel.ts — computeFlightUpdate() z logiką Auto-Stop HOLD
          ↓
 Krok 4: Klasa statku gracza
          world/entities/PlayerShipEntity.ts
            — rozszerza WorldEntity
            — updateFlight(dt, input) deleguje do computeFlightUpdate
-           — publiczne gettery: speed, currentVelocity, acceleration, heading, isFlightAssistEnabled
-           — toggleFlightAssist()
+           — publiczne gettery: speed, currentVelocity, acceleration, heading
          ↓
 Krok 5: Re-eksport
          world/entities/index.ts — dodać eksport PlayerShipEntity
          ↓
-Krok 6: Rozszerzenie GameInput
-         engine/input/GameInput.ts — dodać 'toggle-flight-assist' do bufferedActions
-           (keydown na FLIGHT_KEY_MAP['toggle-flight-assist'])
+Krok 6: Integracja mapowania wejścia lotu
+         engine/input/GameInput.ts + systems/flight/FlightActions.ts
+           — odczyt klawiszy przez isKeyDown() i FLIGHT_KEY_MAP
          ↓
 Krok 7: Integracja z AppShell — wykrywanie player-ship
          app/AppShell.ts:
@@ -677,14 +649,15 @@ Krok 8: Integracja z AppShell — pętla lotu
          app/AppShell.ts → onFixedUpdate():
            — if (playerShipEntity && modeManager.mode === 'game')
              → odczytaj FLIGHT_KEY_MAP z gameInput.isKeyDown()
+             → uwzględnij autoStop = isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist'])
              → playerShipEntity.updateFlight(dt, input)
            — if (devFlightMode && playerShipEntity)
              → camera.follow(playerShipEntity.position)
            — else: istniejąca logika strzałek
          ↓
-Krok 9: Toggle Flight Assist w AppShell
-         app/AppShell.ts → bindInputActions():
-           — gameInput.onAction('toggle-flight-assist', () => playerShipEntity?.toggleFlightAssist())
+Krok 9: Metryka Auto-Stop w AppShell
+         app/AppShell.ts → sekcja Flight w Dev Overlay:
+           — `flight-assist` = `AUTO-STOP (HOLD)` gdy Ctrl jest trzymany, inaczej `OFF`
          ↓
 Krok 10: Dev Overlay — sekcja Flight
           app/AppShell.ts → w bloku devOverlay inicjalizacji:
@@ -732,10 +705,24 @@ src/
 │       └── index.ts                    ← ZMIANA: re-eksport PlayerShipEntity
 ├── engine/
 │   └── input/
-│       └── GameInput.ts                ← ZMIANA: toggle-flight-assist w buforze
+│       └── GameInput.ts                ← ZMIANA: odczyt Auto-Stop HOLD przez isKeyDown
 ├── app/
 │   └── AppShell.ts                     ← ZMIANA: integracja flight, kamera, devtoggle
 ```
+
+## Dokumentacja przyplikowa Etapu 5.5
+
+Standard repozytorium: dokumentacja plików kodu jest trzymana obok kodu jako pliki z sufiksem `.md`.
+
+| Plik kodu | Dokumentacja przyplikowa |
+|---|---|
+| `src/app/AppShell.ts` | `src/app/AppShell.ts.md` |
+| `src/systems/flight/FlightActions.ts` | `src/systems/flight/FlightActions.ts.md` |
+| `src/systems/flight/flightConfig.ts` | `src/systems/flight/flightConfig.ts.md` |
+| `src/physics/movement/flightModel.ts` | `src/physics/movement/flightModel.ts.md` |
+| `src/world/entities/PlayerShipEntity.ts` | `src/world/entities/PlayerShipEntity.ts.md` |
+| `src/world/entities/WorldEntity.ts` | `src/world/entities/WorldEntity.ts.md` |
+| `src/world/entities/index.ts` | `src/world/entities/index.ts.md` |
 
 ---
 
@@ -745,7 +732,7 @@ src/
 |---|---|
 | `05_plan-prac.md` | Status Etapu 5.5 ustawiony na „wdrożony". Kryteria zamknięcia odwołane do `13_etap5.5-specyfikacja.md` (sekcja 12 + sekcje rozszerzeń). |
 | `11_etap5-specyfikacja.md` | Bez zmian. |
-| `01_flight-model.md` | Bez zmian — dokument jest definicją docelowego modelu. Etap 5.5 wdraża podzbiór (rear/front + obrót + FA + soft drag). |
+| `01_flight-model.md` | Bez zmian — dokument jest definicją docelowego modelu. Etap 5.5 wdraża podzbiór (rear/front + obrót + Auto-Stop HOLD + soft drag). |
 
 ---
 
@@ -755,7 +742,7 @@ src/
 |---|---|---|
 | 1 | Czy wszystkie pliki wejściowe zostały przeczytane? | ✅ Tak — dokumenty etapowe + kluczowe pliki runtime (`AppShell`, `GameInput`, `Renderer`, `Camera`, `WorldLayer`, `EntityRenderable`, `ParallaxLayer`, `PlayerShipEntity`, `flightModel`). |
 | 2 | Czy sprzeczności zostały wykryte i rozstrzygnięte? | ✅ Tak — 5 sprzeczności (S1–S5) z jednoznacznymi decyzjami. |
-| 3 | Czy zakres jest minimalny i zamknięty? | ✅ Tak — rear/front thruster, obrót, FA, soft drag, kamera follow, dev toggle. |
+| 3 | Czy zakres jest minimalny i zamknięty? | ✅ Tak — rear/front thruster, obrót, Auto-Stop HOLD, soft drag, kamera follow, dev toggle. |
 | 4 | Czy zakres nie miesza się z Etapem 7/8? | ✅ Tak — brak systemu masy, reaktora, slotów, kolizji, wielosystemowości. |
 | 5 | Czy kontrakty są jednoznaczne? | ✅ Tak — typy TS, sygnatury funkcji, stałe. |
 | 6 | Czy pipeline runtime jest opisany krok po kroku? | ✅ Tak — sekcja 9. |
@@ -780,7 +767,7 @@ Podnieść stabilność FPS dla dużych rozmiarów okna (ok. 2119x1160) bez zmia
 
 ### 15.3. Poza zakresem rozszerzenia
 
-- Zmiana mechaniki lotu, FA, soft drag, seed loadera i systemów Etapu 5.
+- Zmiana mechaniki lotu, Auto-Stop HOLD, soft drag, seed loadera i systemów Etapu 5.
 - Zmiana formatu assetów oraz profili wizualnych.
 - Przebudowa cullingu do struktur przestrzennych (grid/quadtree).
 
@@ -872,10 +859,10 @@ Wymagania:
 |---|---|---|---|
 | O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_600_000 px aktywowana jest skala 0.65 (wejście w tryb large viewport). | Tak |
 | O2 | Powrót do jakości 1:1 działa stabilnie | Po zmniejszeniu powierzchni do <= 1_350_000 px skala wraca do 1.0 (próg wyjścia). | Tak |
-| O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. | Tak |
+| O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. | Chyba tak |
 | O4 | Brak sortowania co klatkę bez zmian | `WorldLayer` nie wykonuje `sort()` w każdej klatce przy niezmiennym porządku. | Tak |
 | O5 | Sortowanie po zmianie wysokości działa | Po zmianie `computedHeight` render order aktualizuje się poprawnie. | Tak |
-| O6 | Build i type-check przechodzą | `npm run type-check` i `npm run build` bez błędów. | Tak |
+| O6 | Build i type-check przechodzą | `npm run type-check` i `npm run build` kończą się bez błędów. | Tak |
 
 ---
 
@@ -945,9 +932,9 @@ To dotyczy również bytów dodawanych później przez systemy gameplayowe.
 | ID | Kryterium | Opis | Kryterium spełnione? |
 |---|---|---|---|
 | SK1 | Stabilizacja statycznych | Statyczne byty świata nie wykazują odczuwalnego mikro-skakania przy ruchu kamery. | Tak |
-| SK2 | Płynność dynamicznych | Statek gracza, NPC i pociski pozostają subpixel/interpolowane. | Sprawdzone ze statkiem gracza tylko i pod to kryterium spelnione Tak |
+| SK2 | Płynność dynamicznych | Statek gracza, NPC i pociski pozostają subpixel/interpolowane. | W tej chwili mozna sprawdzic tylko statek gracza i potwierdzam |
 | SK3 | Brak regresji sceny | Culling, sortowanie, tło, paralaksa i cache działają jak wcześniej. | Tak |
-| SK4 | Kontrola dev | Flaga `pixel-snap-static` działa w runtime i natychmiast zmienia zachowanie renderu. | Ledwo widac roznice ale chyyyyba Tak |
+| SK4 | Kontrola dev | Flaga `pixel-snap-static` działa w runtime i natychmiast zmienia zachowanie renderu. | Tak |
 | SK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. | Tak |
 
 ---
@@ -1038,8 +1025,8 @@ Metryki umieszczone w sekcji `System`.
 
 ### 17.5. Kryteria zamknięcia rozszerzenia
 
-| ID | Kryterium | Opis |
-|---|---|---|
+| ID | Kryterium | Opis | Kryterium spełnione? |
+|---|---|---|---|
 | PK1 | Cap tekstury działa | `ParallaxLayer` nie tworzy offscreenów większych niż 1600x900. | Tak |
 | PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością generowanych cząstek (`dust`) niezależnie od `noiseIntensity`. | Tak |
 | PK3 | Diagnostyka płynności | Dev Overlay pokazuje `fps` i `frame ms`. | Tak |

@@ -2,7 +2,10 @@
   "schemaVersion": 1,
   "systemId": "sol-001",
   "name": "Sol Starter",
-  "center": { "x": 0, "y": 0 },
+  "center": {
+    "x": 0,
+    "y": 0
+  },
   "informationalBoundaryRadius": 1900,
   "maxBoundaryRadius": 2400,
   "objects": [

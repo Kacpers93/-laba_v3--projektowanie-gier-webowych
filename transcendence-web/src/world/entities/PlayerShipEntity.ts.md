@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik definiuje encje statku gracza jako rozszerzenie WorldEntity z logika lotu i Flight Assist. Aktualizuje rotacje, predkosc, przyspieszenie i pozycje na podstawie wejscia oraz konfiguracji lotu.
+Plik definiuje encje statku gracza jako rozszerzenie WorldEntity z logika lotu. Aktualizuje rotacje, predkosc, przyspieszenie i pozycje na podstawie wejscia, konfiguracji lotu oraz Auto-Stop HOLD.
 
 ## Co eksportuje
 - Klasa PlayerShipEntity
@@ -32,6 +32,7 @@ ship.updateFlight(1 / 60, {
   rotateRight: true,
   rearThruster: true,
   frontThruster: false,
+  autoStop: false,
 });
 ```
 

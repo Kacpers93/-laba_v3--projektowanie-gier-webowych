@@ -6,7 +6,7 @@ Definicje encji swiata tworzonych z seeda systemu.
 ## Co zawiera
 - index.ts: eksport zbiorczy modulu encji swiata.
 - WorldEntity.ts: klasa encji runtime z danymi seedType, computedHeight, profileId i bounding box.
-- PlayerShipEntity.ts: klasa encji statku gracza z logika lotu i Flight Assist.
+- PlayerShipEntity.ts: klasa encji statku gracza z logika lotu i Auto-Stop HOLD.
 
 ## Zaleznosci zewnetrzne i wewnetrzne
 - Zewnetrzne: brak.
