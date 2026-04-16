@@ -7,7 +7,6 @@ import { WorldEntity } from './WorldEntity';
 
 export class PlayerShipEntity extends WorldEntity {
   private currentAcceleration: Vector2 = { x: 0, y: 0 };
-  private flightAssistEnabled = true;
   public readonly flightConfig: FlightConfig;
 
   public constructor(config: {
@@ -49,14 +48,6 @@ export class PlayerShipEntity extends WorldEntity {
     return this.rotation;
   }
 
-  public get isFlightAssistEnabled(): boolean {
-    return this.flightAssistEnabled;
-  }
-
-  public toggleFlightAssist(): void {
-    this.flightAssistEnabled = !this.flightAssistEnabled;
-  }
-
   public updateFlight(dt: number, input: FlightInput): void {
     if (dt <= 0) {
       return;
@@ -67,7 +58,6 @@ export class PlayerShipEntity extends WorldEntity {
       this.rotation,
       input,
       this.flightConfig,
-      this.flightAssistEnabled,
       dt,
     );
 
@@ -94,4 +84,5 @@ export interface FlightInput {
   rotateRight: boolean;
   rearThruster: boolean;
   frontThruster: boolean;
+  autoStop: boolean;
 }

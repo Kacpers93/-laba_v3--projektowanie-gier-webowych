@@ -93,9 +93,6 @@ export class GameInput {
       this.bufferedActions.push('toggle-ui');
     }
 
-    if (key === FLIGHT_KEY_MAP['toggle-flight-assist']) {
-      this.bufferedActions.push('toggle-flight-assist');
-    }
   };
 
   private handleKeyUp = (event: KeyboardEvent): void => {

@@ -17,15 +17,33 @@ export function computeFlightUpdate(
   currentRotation: number,
   input: FlightInput,
   config: FlightConfig,
-  flightAssistEnabled: boolean,
   dt: number,
 ): FlightUpdateResult {
+  const autoStopFineSpeed = 24;
+  const autoStopAlignmentToBrake = 0.9;
+  const autoStopRotationEpsilon = 0.03;
+  const currentSpeed = Math.hypot(currentVelocity.x, currentVelocity.y);
   let newRotation = currentRotation;
-  if (input.rotateLeft) {
-    newRotation -= config.rotationSpeed * dt;
-  }
-  if (input.rotateRight) {
-    newRotation += config.rotationSpeed * dt;
+
+  if (input.autoStop && currentSpeed >= config.flightAssistDeadzone) {
+    const targetHeading = Math.atan2(-currentVelocity.y, -currentVelocity.x);
+    const rotationFactor = currentSpeed > autoStopFineSpeed ? 1 : 0.35;
+    newRotation = rotateTowards(
+      currentRotation,
+      targetHeading,
+      config.rotationSpeed * rotationFactor * dt,
+    );
+
+    if (Math.abs(shortestAngleDelta(newRotation, targetHeading)) <= autoStopRotationEpsilon) {
+      newRotation = targetHeading;
+    }
+  } else {
+    if (input.rotateLeft) {
+      newRotation -= config.rotationSpeed * dt;
+    }
+    if (input.rotateRight) {
+      newRotation += config.rotationSpeed * dt;
+    }
   }
 
   const headingX = Math.cos(newRotation);
@@ -34,24 +52,39 @@ export function computeFlightUpdate(
   let ax = 0;
   let ay = 0;
 
-  if (input.rearThruster) {
+  if (input.autoStop && currentSpeed >= config.flightAssistDeadzone) {
+    const stopDirectionX = -currentVelocity.x / currentSpeed;
+    const stopDirectionY = -currentVelocity.y / currentSpeed;
+    const alignment = headingX * stopDirectionX + headingY * stopDirectionY;
+
+    if (currentSpeed > autoStopFineSpeed && alignment >= autoStopAlignmentToBrake) {
+      ax += headingX * config.rearThrust;
+      ay += headingY * config.rearThrust;
+    } else if (currentSpeed <= autoStopFineSpeed) {
+      // W koncowej fazie hamowania stosujemy lagodne, osiowe domykanie predkosci.
+      const fineBrakeAccel = Math.min(config.frontThrust, currentSpeed / Math.max(dt, 1e-6));
+      ax += stopDirectionX * fineBrakeAccel;
+      ay += stopDirectionY * fineBrakeAccel;
+    }
+  }
+
+  if (input.rearThruster && !input.autoStop) {
     ax += headingX * config.rearThrust;
     ay += headingY * config.rearThrust;
   }
 
-  if (input.frontThruster) {
+  if (input.frontThruster && !input.autoStop) {
     ax -= headingX * config.frontThrust;
     ay -= headingY * config.frontThrust;
   }
 
-  if (flightAssistEnabled) {
-    const faAccel = computeFlightAssist(currentVelocity, newRotation, config, dt);
-    ax += faAccel.x;
-    ay += faAccel.y;
-  }
-
   let newVx = currentVelocity.x + ax * dt;
   let newVy = currentVelocity.y + ay * dt;
+
+  if (input.autoStop && Math.hypot(newVx, newVy) < config.flightAssistDeadzone) {
+    newVx = 0;
+    newVy = 0;
+  }
 
   const speed = Math.hypot(newVx, newVy);
   const softLimit = config.maxSpeed * 1.1;
@@ -68,46 +101,13 @@ export function computeFlightUpdate(
   };
 }
 
-/**
- * Oblicza przyspieszenie Flight Assist.
- * FA hamuje predkosc boczna i wsteczna, nie hamuje ruchu do przodu.
- */
-function computeFlightAssist(
-  velocity: Vector2,
-  rotation: number,
-  config: FlightConfig,
-  _dt: number,
-): Vector2 {
-  const speed = Math.hypot(velocity.x, velocity.y);
-  if (speed < config.flightAssistDeadzone) {
-    return { x: 0, y: 0 };
-  }
+function rotateTowards(from: number, to: number, maxStep: number): number {
+  const delta = shortestAngleDelta(from, to);
+  const clampedDelta = Math.max(-maxStep, Math.min(maxStep, delta));
+  return from + clampedDelta;
+}
 
-  const headingX = Math.cos(rotation);
-  const headingY = Math.sin(rotation);
-
-  const forwardComponent = velocity.x * headingX + velocity.y * headingY;
-
-  const lateralX = -headingY;
-  const lateralY = headingX;
-  const lateralComponent = velocity.x * lateralX + velocity.y * lateralY;
-
-  let ax = 0;
-  let ay = 0;
-
-  if (forwardComponent < -1) {
-    ax += headingX * config.frontThrust;
-    ay += headingY * config.frontThrust;
-  }
-
-  if (lateralComponent > 1) {
-    ax -= lateralX * config.frontThrust;
-    ay -= lateralY * config.frontThrust;
-  }
-  if (lateralComponent < -1) {
-    ax += lateralX * config.frontThrust;
-    ay += lateralY * config.frontThrust;
-  }
-
-  return { x: ax, y: ay };
+function shortestAngleDelta(from: number, to: number): number {
+  const twoPi = Math.PI * 2;
+  return ((to - from + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
 }

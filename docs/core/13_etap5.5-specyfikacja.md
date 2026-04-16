@@ -568,24 +568,24 @@ Umieszczenie: istniejąca sekcja „Dev Flags" w Dev Overlay.
 
 ## 12. Kryteria zamknięcia Etapu 5.5
 
-| # | Kryterium | Opis |
-|---|---|---|
-| K1 | Statek gracza porusza się | Po wciśnięciu W statek gracza przyspiesza w kierunku dzioba. |
-| K2 | Statek gracza hamuje | Po wciśnięciu S statek hamuje thrusterem front (siła 0.3× rear). |
-| K3 | Obrót działa | A i D obracają statek z prędkością `rotationSpeed`. |
-| K4 | Fizyka Newtonowska | Po puszczeniu W statek leci z aktualną prędkością bez spowolnienia (FA OFF). |
-| K5 | Flight Assist ON | Przy FA ON statek automatycznie hamuje drift boczny i ruch wsteczny. |
-| K6 | Flight Assist toggle | Ctrl przełącza FA ON/OFF. Stan widoczny w Dev Overlay: „ON"/„OFF". |
-| K7 | Soft drag | Powyżej `maxSpeed × 1.1` prędkość jest hamowana soft dragiem. |
-| K8 | Kamera śledzi gracza | W trybie flight kamera podąża za pozycją statku gracza. |
-| K9 | Dev mode: free camera | Po wyłączeniu checkboxa „flight-mode" kamera wraca do sterowania strzałkami. |
-| K10 | Dev mode: powrót do flight | Po ponownym włączeniu checkboxa kamera wraca do śledzenia gracza. |
-| K11 | Gettery lotu | `velocity`, `acceleration`, `heading` — dostępne jako publiczne gettery na `PlayerShipEntity`. |
-| K12 | Dev Overlay: sekcja Flight | Sekcja pokazuje speed, heading, velocity, acceleration, FA status, position. |
-| K13 | Brak regresji Etapu 5 | Seed loader, world rendering, dev overlay (sekcje System, Entities, Render, Cache, Assets) — działają bez zmian. |
-| K14 | Brak regresji wcześniejszych etapów | Tło, paralaksa, debug grid, culling, interpolacja, cache — działają bez zmian. |
-| K15 | Kompilacja | `npm run type-check` → 0 errors. `npm run build` → buduje bez błędów. |
-| K16 | Brak player-ship fallback | Gdy brak encji player-ship w seedzie, gra startuje w free camera mode bez crashu. |
+| # | Kryterium | Opis | Kryterium spełnione? |
+|---|---|---|---|
+| K1 | Statek gracza porusza się | Po wciśnięciu W statek gracza przyspiesza w kierunku dzioba. | Tak |
+| K2 | Statek gracza hamuje | Po wciśnięciu S statek hamuje thrusterem front (siła 0.3× rear). | Tak |
+| K3 | Obrót działa | A i D obracają statek z prędkością `rotationSpeed`. | Tak |
+| K4 | Fizyka Newtonowska | Po puszczeniu W statek leci z aktualną prędkością bez spowolnienia (FA OFF). | Tak |
+| K5 | Flight Assist ON | Przy FA ON statek automatycznie hamuje drift boczny i ruch wsteczny. | Tak |
+| K6 | Flight Assist toggle | Ctrl przełącza FA ON/OFF. Stan widoczny w Dev Overlay: „ON"/„OFF". | Tak |
+| K7 | Soft drag | Powyżej `maxSpeed × 1.1` prędkość jest hamowana soft dragiem. | Tak |
+| K8 | Kamera śledzi gracza | W trybie flight kamera podąża za pozycją statku gracza. | Tak |
+| K9 | Dev mode: free camera | Po wyłączeniu checkboxa „flight-mode" kamera wraca do sterowania strzałkami. | Tak |
+| K10 | Dev mode: powrót do flight | Po ponownym włączeniu checkboxa kamera wraca do śledzenia gracza. | Tak |
+| K11 | Gettery lotu | `velocity`, `acceleration`, `heading` — dostępne jako publiczne gettery na `PlayerShipEntity`. | Tak |
+| K12 | Dev Overlay: sekcja Flight | Sekcja pokazuje speed, heading, velocity, acceleration, FA status, position. | Tak |
+| K13 | Brak regresji Etapu 5 | Seed loader, world rendering, dev overlay (sekcje System, Entities, Render, Cache, Assets) — działają bez zmian. | Tak |
+| K14 | Brak regresji wcześniejszych etapów | Tło, paralaksa, debug grid, culling, interpolacja, cache — działają bez zmian. | Tak |
+| K15 | Kompilacja | `npm run type-check` → 0 errors. `npm run build` → buduje bez błędów. | Tak |
+| K16 | Brak player-ship fallback | Gdy brak encji player-ship w seedzie, gra startuje w free camera mode bez crashu. | Tak |
 
 ### Artefakty zamykające Etap 5.5
 
@@ -868,14 +868,14 @@ Wymagania:
 
 ### 15.5. Kryteria zamknięcia rozszerzenia 5.5.1
 
-| # | Kryterium | Oczekiwany rezultat |
-|---|---|---|
-| O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_600_000 px aktywowana jest skala 0.65 (wejście w tryb large viewport). |
-| O2 | Powrót do jakości 1:1 działa stabilnie | Po zmniejszeniu powierzchni do <= 1_350_000 px skala wraca do 1.0 (próg wyjścia). |
-| O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. |
-| O4 | Brak sortowania co klatkę bez zmian | `WorldLayer` nie wykonuje `sort()` w każdej klatce przy niezmiennym porządku. |
-| O5 | Sortowanie po zmianie wysokości działa | Po zmianie `computedHeight` render order aktualizuje się poprawnie. |
-| O6 | Build i type-check przechodzą | `npm run type-check` i `npm run build` bez błędów. |
+| # | Kryterium | Oczekiwany rezultat | Kryterium spełnione? |
+|---|---|---|---|
+| O1 | Duży viewport wymusza skalę renderu | Dla okna o powierzchni >= 1_600_000 px aktywowana jest skala 0.65 (wejście w tryb large viewport). | Tak |
+| O2 | Powrót do jakości 1:1 działa stabilnie | Po zmniejszeniu powierzchni do <= 1_350_000 px skala wraca do 1.0 (próg wyjścia). | Tak |
+| O3 | Input myszy poprawny po skali | `mouseWorldPos` odpowiada pozycji kursora na ekranie bez przesunięć. | Tak |
+| O4 | Brak sortowania co klatkę bez zmian | `WorldLayer` nie wykonuje `sort()` w każdej klatce przy niezmiennym porządku. | Tak |
+| O5 | Sortowanie po zmianie wysokości działa | Po zmianie `computedHeight` render order aktualizuje się poprawnie. | Tak |
+| O6 | Build i type-check przechodzą | `npm run type-check` i `npm run build` bez błędów. | Tak |
 
 ---
 
@@ -942,13 +942,13 @@ To dotyczy również bytów dodawanych później przez systemy gameplayowe.
 
 ### 16.5. Kryteria zamknięcia rozszerzenia
 
-| ID | Kryterium | Opis |
-|---|---|---|
-| SK1 | Stabilizacja statycznych | Statyczne byty świata nie wykazują odczuwalnego mikro-skakania przy ruchu kamery. |
-| SK2 | Płynność dynamicznych | Statek gracza, NPC i pociski pozostają subpixel/interpolowane. |
-| SK3 | Brak regresji sceny | Culling, sortowanie, tło, paralaksa i cache działają jak wcześniej. |
-| SK4 | Kontrola dev | Flaga `pixel-snap-static` działa w runtime i natychmiast zmienia zachowanie renderu. |
-| SK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. |
+| ID | Kryterium | Opis | Kryterium spełnione? |
+|---|---|---|---|
+| SK1 | Stabilizacja statycznych | Statyczne byty świata nie wykazują odczuwalnego mikro-skakania przy ruchu kamery. | Tak |
+| SK2 | Płynność dynamicznych | Statek gracza, NPC i pociski pozostają subpixel/interpolowane. | Sprawdzone ze statkiem gracza tylko i pod to kryterium spelnione Tak |
+| SK3 | Brak regresji sceny | Culling, sortowanie, tło, paralaksa i cache działają jak wcześniej. | Tak |
+| SK4 | Kontrola dev | Flaga `pixel-snap-static` działa w runtime i natychmiast zmienia zachowanie renderu. | Ledwo widac roznice ale chyyyyba Tak |
+| SK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. | Tak |
 
 ---
 
@@ -1040,8 +1040,8 @@ Metryki umieszczone w sekcji `System`.
 
 | ID | Kryterium | Opis |
 |---|---|---|
-| PK1 | Cap tekstury działa | `ParallaxLayer` nie tworzy offscreenów większych niż 1600x900. |
-| PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością generowanych cząstek (`dust`) niezależnie od `noiseIntensity`. |
-| PK3 | Diagnostyka płynności | Dev Overlay pokazuje `fps` i `frame ms`. |
-| PK4 | Brak regresji renderu | Tło, culling, lot i panel dev działają bez regresji funkcjonalnej. |
-| PK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. |
+| PK1 | Cap tekstury działa | `ParallaxLayer` nie tworzy offscreenów większych niż 1600x900. | Tak |
+| PK2 | Jawna gęstość działa | `densityMultiplier` steruje licznością generowanych cząstek (`dust`) niezależnie od `noiseIntensity`. | Tak |
+| PK3 | Diagnostyka płynności | Dev Overlay pokazuje `fps` i `frame ms`. | Tak |
+| PK4 | Brak regresji renderu | Tło, culling, lot i panel dev działają bez regresji funkcjonalnej. | Tak |
+| PK5 | Kompilacja | `npm run type-check` i `npm run build` przechodzą bez błędów. | Tak |

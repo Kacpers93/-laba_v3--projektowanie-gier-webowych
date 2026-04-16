@@ -375,7 +375,8 @@ export class AppShell {
             return '-';
           }
 
-          return this.playerShipEntity.isFlightAssistEnabled ? 'ON' : 'OFF';
+          const isAutoStopHeld = this.gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist']);
+          return isAutoStopHeld ? 'AUTO-STOP (HOLD)' : 'OFF';
         });
         flightSection.registerMetric('position', 'position', () => {
           if (!this.playerShipEntity) {
@@ -601,6 +602,7 @@ export class AppShell {
         rotateRight: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['rotate-right']),
         rearThruster: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['rear-thruster']),
         frontThruster: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['front-thruster']),
+        autoStop: this.gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist']),
       });
     }
 
@@ -730,10 +732,6 @@ export class AppShell {
   private bindInputActions(): void {
     this.gameInput.onAction('toggle-ui', () => {
       this.inputModeManager.setMode('ui');
-    });
-
-    this.gameInput.onAction('toggle-flight-assist', () => {
-      this.playerShipEntity?.toggleFlightAssist();
     });
 
     this.uiInput.onCancel(() => {
