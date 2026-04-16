@@ -35,7 +35,8 @@ export function computeFlightUpdate(
     );
 
     if (Math.abs(shortestAngleDelta(newRotation, targetHeading)) <= autoStopRotationEpsilon) {
-      newRotation = targetHeading;
+      // Snap to the nearest equivalent target angle to avoid a 2pi interpolation jump.
+      newRotation += shortestAngleDelta(newRotation, targetHeading);
     }
   } else {
     if (input.rotateLeft) {
