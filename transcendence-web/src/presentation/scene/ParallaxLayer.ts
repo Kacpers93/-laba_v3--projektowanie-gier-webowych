@@ -51,7 +51,10 @@ export class ParallaxLayer implements SceneLayer {
     });
   }
 
-  public render(ctx: CanvasRenderingContext2D, _camera: Camera, _alpha: number): void {
+  public render(ctx: CanvasRenderingContext2D, camera: Camera, _alpha: number): void {
+    const zoom = this.normalizeZoom(camera.zoom);
+    const viewport = this.getViewportInLayerSpace(zoom);
+
     this.sublayers.forEach((sublayer) => {
       const textureDimensions = this.getTextureDimensions();
       const canvas = this.cache.getOrCreate(
@@ -72,15 +75,16 @@ export class ParallaxLayer implements SceneLayer {
       const textureWidth = canvas.width;
       const textureHeight = canvas.height;
       const startX = sublayer.config.tileX
-        ? -this.wrapOffset(sublayer.offsetX, textureWidth)
+        ? viewport.minX - this.wrapOffset(viewport.minX + sublayer.offsetX, textureWidth)
         : -sublayer.offsetX;
       const startY = sublayer.config.tileY
-        ? -this.wrapOffset(sublayer.offsetY, textureHeight)
+        ? viewport.minY - this.wrapOffset(viewport.minY + sublayer.offsetY, textureHeight)
         : -sublayer.offsetY;
-      const repeatX = sublayer.config.tileX ? Math.ceil(this.width / textureWidth) + 1 : 1;
-      const repeatY = sublayer.config.tileY ? Math.ceil(this.height / textureHeight) + 1 : 1;
+      const repeatX = sublayer.config.tileX ? Math.ceil(viewport.width / textureWidth) + 2 : 1;
+      const repeatY = sublayer.config.tileY ? Math.ceil(viewport.height / textureHeight) + 2 : 1;
 
       ctx.save();
+      this.applyZoomTransform(ctx, zoom);
       ctx.globalAlpha = sublayer.config.opacity;
 
       for (let x = 0; x < repeatX; x++) {
@@ -164,6 +168,36 @@ export class ParallaxLayer implements SceneLayer {
     }
 
     return ((offset % size) + size) % size;
+  }
+
+  private normalizeZoom(zoom: number): number {
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  }
+
+  private getViewportInLayerSpace(zoom: number): {
+    minX: number;
+    minY: number;
+    width: number;
+    height: number;
+  } {
+    const viewportWidth = this.width / zoom;
+    const viewportHeight = this.height / zoom;
+
+    return {
+      minX: (this.width - viewportWidth) / 2,
+      minY: (this.height - viewportHeight) / 2,
+      width: viewportWidth,
+      height: viewportHeight,
+    };
+  }
+
+  private applyZoomTransform(ctx: CanvasRenderingContext2D, zoom: number): void {
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+
+    ctx.translate(centerX, centerY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-centerX, -centerY);
   }
 
   private withAlpha(color: string, alpha: number): string {

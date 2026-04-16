@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik implementuje warstwe paralaksy skladajaca sie z wielu subwarstw z offsetem zaleznym od kamery. Korzysta z OffscreenCache i wspiera tiling tekstur tla.
+Plik implementuje warstwe paralaksy skladajaca sie z wielu subwarstw z offsetem zaleznym od kamery. Korzysta z OffscreenCache, wspiera tiling tekstur tla i render reagujacy na zoom kamery.
 
 ## Co eksportuje
 - Interfejs ParallaxSublayerConfig

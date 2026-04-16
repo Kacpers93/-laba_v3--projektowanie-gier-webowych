@@ -6,7 +6,7 @@ Definicje warstw sceny i renderer, ktory zarzadza ich kolejnoscia, aktualizacja 
 ## Co zawiera
 - `SceneLayer.ts`: interfejs `SceneLayer` (`order`, `update`, `render`).
 - `SceneRenderer.ts`: klasa `SceneRenderer` do dodawania/usuwania warstw oraz wywolan `update`/`render`.
-- `BackgroundLayer.ts`: statyczne tlo gwiazd z cache offscreen.
+- `BackgroundLayer.ts`: tlo gwiazd z cache offscreen, przesuwane wzgledem kamery i kafelkowane.
 - `ParallaxLayer.ts`: wielowarstwowy parallax z tile i przesunieciem zaleznym od kamery.
 - `WorldLayer.ts`: warstwa swiata z cullingiem i sortowaniem po computedHeight.
 - `EffectsLayer.ts`: stub warstwy efektow (Etap 2/9).

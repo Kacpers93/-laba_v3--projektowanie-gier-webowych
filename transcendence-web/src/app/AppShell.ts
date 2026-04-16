@@ -217,6 +217,7 @@ export class AppShell {
       maxBrightness: 1.0,
       minSize: 0.3,
       maxSize: 0.8,
+      depthFactor: 0.015,
     });
     this.sceneRenderer.addLayer(this.backgroundLayer);
 

@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik implementuje warstwe tla gwiazd z cachowaniem na OffscreenCanvas. Generuje deterministyczny rozklad gwiazd (dla seeda) i wspiera regeneracje po resize.
+Plik implementuje warstwe tla gwiazd z cachowaniem na OffscreenCanvas. Generuje deterministyczny rozklad gwiazd (dla seeda), przesuwa tlo wzgledem kamery (depth factor), reaguje na zoom kamery i wspiera regeneracje po resize.
 
 ## Co eksportuje
 - Interfejs BackgroundConfig
@@ -19,6 +19,7 @@ const layer = new BackgroundLayer(cache, width, height, {
   maxBrightness: 1,
   minSize: 0.5,
   maxSize: 2,
+  depthFactor: 0.02,
 });
 ```
 

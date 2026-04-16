@@ -9,6 +9,7 @@ export interface BackgroundConfig {
   minSize: number;
   maxSize: number;
   seed?: number;
+  depthFactor?: number;
 }
 
 interface Star {
@@ -22,6 +23,8 @@ export class BackgroundLayer implements SceneLayer {
   readonly order = 0;
   private stars: Star[] = [];
   private cacheKey = 'background';
+  private offsetX = 0;
+  private offsetY = 0;
 
   public constructor(
     private cache: OffscreenCache,
@@ -32,11 +35,13 @@ export class BackgroundLayer implements SceneLayer {
     this.generateStars();
   }
 
-  public update(_dt: number, _camera: Camera): void {
-    // Nic do roboty — tło jest statyczne
+  public update(_dt: number, camera: Camera): void {
+    const depthFactor = this.config.depthFactor ?? 0.02;
+    this.offsetX = camera.position.x * depthFactor;
+    this.offsetY = camera.position.y * depthFactor;
   }
 
-  public render(ctx: CanvasRenderingContext2D, _camera: Camera, _alpha: number): void {
+  public render(ctx: CanvasRenderingContext2D, camera: Camera, _alpha: number): void {
     const cachedCanvas = this.cache.getOrCreate(
       this.cacheKey,
       this.width,
@@ -46,7 +51,25 @@ export class BackgroundLayer implements SceneLayer {
       },
     );
 
-    ctx.drawImage(cachedCanvas, 0, 0);
+    const zoom = this.normalizeZoom(camera.zoom);
+    const viewport = this.getViewportInLayerSpace(zoom);
+    const textureWidth = cachedCanvas.width;
+    const textureHeight = cachedCanvas.height;
+    const startX = viewport.minX - this.wrapOffset(viewport.minX + this.offsetX, textureWidth);
+    const startY = viewport.minY - this.wrapOffset(viewport.minY + this.offsetY, textureHeight);
+    const repeatX = Math.ceil(viewport.width / textureWidth) + 2;
+    const repeatY = Math.ceil(viewport.height / textureHeight) + 2;
+
+    ctx.save();
+    this.applyZoomTransform(ctx, zoom);
+
+    for (let x = 0; x < repeatX; x++) {
+      for (let y = 0; y < repeatY; y++) {
+        ctx.drawImage(cachedCanvas, startX + x * textureWidth, startY + y * textureHeight);
+      }
+    }
+
+    ctx.restore();
   }
 
   public regenerate(width: number, height: number): void {
@@ -98,5 +121,43 @@ export class BackgroundLayer implements SceneLayer {
       result /= 4294967296;
       return result;
     };
+  }
+
+  private wrapOffset(offset: number, size: number): number {
+    if (size <= 0) {
+      return 0;
+    }
+
+    return ((offset % size) + size) % size;
+  }
+
+  private normalizeZoom(zoom: number): number {
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  }
+
+  private getViewportInLayerSpace(zoom: number): {
+    minX: number;
+    minY: number;
+    width: number;
+    height: number;
+  } {
+    const viewportWidth = this.width / zoom;
+    const viewportHeight = this.height / zoom;
+
+    return {
+      minX: (this.width - viewportWidth) / 2,
+      minY: (this.height - viewportHeight) / 2,
+      width: viewportWidth,
+      height: viewportHeight,
+    };
+  }
+
+  private applyZoomTransform(ctx: CanvasRenderingContext2D, zoom: number): void {
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+
+    ctx.translate(centerX, centerY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-centerX, -centerY);
   }
 }
