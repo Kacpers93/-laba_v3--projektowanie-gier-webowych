@@ -22,6 +22,8 @@ import { ACTIVE_PARALLAX_SUBLAYERS } from '@presentation/scene/parallax-presets'
 import { ParallaxLayer } from '@presentation/scene/ParallaxLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@presentation/scene/WorldLayer';
+import { Stage6UiSystem } from '@/ui/stage6';
+import type { MenuNodeId, Stage6FrameModel, Stage6ObjectContext, Stage6ObjectType } from '@/ui/stage6';
 import { PlayerShipEntity, WorldEntity } from '@world/entities';
 import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
 import { DEFAULT_FLIGHT_CONFIG } from '@systems/flight/flightConfig';
@@ -31,7 +33,7 @@ import {
   SEED_TYPE_TO_CATEGORY,
   SystemSeedLoader,
 } from '@world/seed';
-import type { SeedObjectType, SystemLoadResult } from '@world/seed';
+import type { RuntimeSeedObjectType, SeedObjectType, SystemLoadResult } from '@world/seed';
 import type { Vector2 } from '@/types/common';
 import type { Renderable } from '@/types/engine';
 
@@ -49,6 +51,8 @@ const CAMERA_ZOOM_MIN = 0.5;
 const CAMERA_ZOOM_MAX = 2;
 const CAMERA_ZOOM_STEP = 0.015;
 const CAMERA_ZOOM_LERP_RATE = 8;
+const HUD_RADAR_RANGE = 800;
+const UI_CONTEXT_RADIUS = 430;
 
 type DevOverlaySelectOption = {
   value: string;
@@ -156,6 +160,7 @@ export class AppShell {
 
   private readonly hudLayer: HTMLDivElement;
   private readonly screenLayer: HTMLDivElement;
+  private readonly stage6Ui: Stage6UiSystem;
   private readonly camera: Camera;
   private gameInput!: GameInput;
   private uiInput!: UIInput;
@@ -201,6 +206,13 @@ export class AppShell {
     this.audioManager = new AudioManager();
     this.inputModeManager = new InputModeManager();
     this.initializeInputControllers();
+
+    this.stage6Ui = new Stage6UiSystem(
+      this.hudLayer,
+      this.screenLayer,
+      this.uiInput,
+      this.inputModeManager,
+    );
 
     this.cache = new OffscreenCache();
     this.entityManager = new EntityManager();
@@ -696,7 +708,255 @@ export class AppShell {
 
   private readonly onFrameRender = (alpha: number): void => {
     this.sceneRenderer.render(this.renderer.ctx, this.camera, alpha);
+    this.updateStage6Ui();
   };
+
+  private updateStage6Ui(): void {
+    this.stage6Ui.update(this.buildStage6FrameModel());
+  }
+
+  private buildStage6FrameModel(): Stage6FrameModel {
+    const contextEntity = this.resolveContextEntity();
+    const objectContext = this.buildObjectContext(contextEntity);
+    const target = this.resolveHudTarget();
+
+    const shipName = this.playerShipEntity?.id ?? objectContext.sceneLabel;
+    const shipVelocity = this.playerShipEntity?.speed ?? 0;
+    const nearbyCargo = this.entityManager
+      .getByCategory('environment')
+      .filter((entity) => this.distanceToPlayer(entity) <= HUD_RADAR_RANGE).length;
+
+    const radarContacts = this.buildRadarContacts();
+
+    return {
+      mode: this.inputModeManager.mode === 'ui' ? 'ui' : 'game',
+      context: objectContext,
+      ship: {
+        name: shipName,
+        velocity: shipVelocity,
+        cargoUsed: nearbyCargo,
+        cargoCapacity: 60,
+        credits: 12000 + this.entityManager.size * 17,
+        reactor: {
+          reactorType: 'Class-I',
+          output: null,
+          load: null,
+          notes: 'Model runtime reaktora zostanie dopiety w Etapie 7.',
+        },
+      },
+      target,
+      radarRange: HUD_RADAR_RANGE,
+      radarContacts,
+    };
+  }
+
+  private resolveContextEntity(): GameEntity | null {
+    if (!this.playerShipEntity) {
+      return this.entityManager.getAll()[0] ?? null;
+    }
+
+    if (this.inputModeManager.mode !== 'ui') {
+      return this.playerShipEntity;
+    }
+
+    const contextCandidate = this.entityManager
+      .getAll()
+      .filter((entity) => entity.id !== this.playerShipEntity?.id)
+      .filter((entity) => entity.category === 'station' || entity.category === 'wreck' || entity.category === 'ship')
+      .sort((left, right) => this.distanceToPlayer(left) - this.distanceToPlayer(right))[0];
+
+    if (!contextCandidate) {
+      return this.playerShipEntity;
+    }
+
+    return this.distanceToPlayer(contextCandidate) <= UI_CONTEXT_RADIUS
+      ? contextCandidate
+      : this.playerShipEntity;
+  }
+
+  private buildObjectContext(entity: GameEntity | null): Stage6ObjectContext {
+    if (!entity) {
+      return {
+        objectType: 'environment',
+        menuProfile: 'default-minimal',
+        availableNodes: ['help', 'exit'],
+        sceneLabel: 'Unknown Scene',
+        sceneDescription: 'Brak aktywnego obiektu.',
+      };
+    }
+
+    if (entity instanceof WorldEntity) {
+      const menuProfile = this.mapSeedTypeToProfile(entity.seedType);
+      const objectType = this.mapSeedTypeToObjectType(entity.seedType);
+
+      return {
+        objectType,
+        menuProfile,
+        availableNodes: this.getAvailableNodesForProfile(menuProfile),
+        sceneLabel: this.formatSceneLabel(entity),
+        sceneDescription: this.describeSeedType(entity.seedType),
+      };
+    }
+
+    const fallbackProfile = entity.category === 'ship' ? 'player-ship' : 'default-minimal';
+    return {
+      objectType: entity.category === 'ship' ? 'ship' : 'environment',
+      menuProfile: fallbackProfile,
+      availableNodes: this.getAvailableNodesForProfile(fallbackProfile),
+      sceneLabel: entity.id,
+      sceneDescription: 'Kontekst obiektu runtime.',
+    };
+  }
+
+  private mapSeedTypeToProfile(seedType: RuntimeSeedObjectType): string {
+    if (seedType === 'station') {
+      return 'station';
+    }
+
+    if (seedType === 'station-wreck' || seedType === 'ship-wreck') {
+      return 'wreck';
+    }
+
+    if (seedType === 'npc-ship') {
+      return 'salvage-ship';
+    }
+
+    if (seedType === 'player-ship') {
+      return 'player-ship';
+    }
+
+    return 'default-minimal';
+  }
+
+  private mapSeedTypeToObjectType(seedType: RuntimeSeedObjectType): Stage6ObjectType {
+    if (seedType === 'player-ship' || seedType === 'npc-ship') {
+      return 'ship';
+    }
+
+    if (seedType === 'station') {
+      return 'station';
+    }
+
+    if (seedType === 'station-wreck' || seedType === 'ship-wreck') {
+      return 'wreck';
+    }
+
+    return 'environment';
+  }
+
+  private getAvailableNodesForProfile(menuProfile: string): MenuNodeId[] {
+    switch (menuProfile) {
+      case 'player-ship':
+        return ['ship-status', 'inventory', 'reactor', 'modules', 'weapons', 'help', 'exit'];
+      case 'station':
+        return ['commodities', 'trade', 'dock', 'missions', 'services', 'help', 'exit'];
+      case 'wreck':
+        return ['ship-status', 'inventory', 'reactor', 'modules', 'salvage', 'repair', 'help', 'exit'];
+      case 'salvage-ship':
+        return ['ship-status', 'inventory', 'reactor', 'modules', 'salvage', 'repair', 'help', 'exit'];
+      default:
+        return ['help', 'exit'];
+    }
+  }
+
+  private resolveHudTarget(): Stage6FrameModel['target'] {
+    if (!this.playerShipEntity) {
+      return null;
+    }
+
+    const nearest = this.entityManager
+      .getAll()
+      .filter((entity) => entity.id !== this.playerShipEntity?.id)
+      .sort((left, right) => this.distanceToPlayer(left) - this.distanceToPlayer(right))[0];
+
+    if (!nearest) {
+      return null;
+    }
+
+    const distance = this.distanceToPlayer(nearest);
+    return {
+      id: nearest.id,
+      name: this.formatSceneLabel(nearest),
+      range: distance,
+      shield: nearest.category === 'wreck' ? 0 : nearest.category === 'ship' ? 42 : 63,
+      armor: nearest.category === 'celestial' ? 100 : nearest.category === 'wreck' ? 28 : 71,
+    };
+  }
+
+  private buildRadarContacts(): Stage6FrameModel['radarContacts'] {
+    if (!this.playerShipEntity) {
+      return [];
+    }
+
+    return this.entityManager
+      .getAll()
+      .filter((entity) => entity.id !== this.playerShipEntity?.id)
+      .map((entity) => ({
+        id: entity.id,
+        dx: entity.position.x - this.playerShipEntity!.position.x,
+        dy: entity.position.y - this.playerShipEntity!.position.y,
+        category: this.mapEntityCategoryToRadarCategory(entity.category),
+      }))
+      .filter((contact) => Math.hypot(contact.dx, contact.dy) <= HUD_RADAR_RANGE);
+  }
+
+  private mapEntityCategoryToRadarCategory(category: EntityCategory): Stage6FrameModel['radarContacts'][number]['category'] {
+    if (
+      category === 'ship' ||
+      category === 'station' ||
+      category === 'wreck' ||
+      category === 'gate' ||
+      category === 'celestial' ||
+      category === 'environment'
+    ) {
+      return category;
+    }
+
+    return 'environment';
+  }
+
+  private distanceToPlayer(entity: GameEntity): number {
+    if (!this.playerShipEntity) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    return Math.hypot(
+      entity.position.x - this.playerShipEntity.position.x,
+      entity.position.y - this.playerShipEntity.position.y,
+    );
+  }
+
+  private formatSceneLabel(entity: GameEntity): string {
+    if (!(entity instanceof WorldEntity)) {
+      return entity.id;
+    }
+
+    return `${entity.seedType} · ${entity.id}`;
+  }
+
+  private describeSeedType(seedType: RuntimeSeedObjectType): string {
+    switch (seedType) {
+      case 'player-ship':
+        return 'Panel statku gracza i menu statusu.';
+      case 'npc-ship':
+        return 'Statek lokalny z profilem salvage.';
+      case 'station':
+        return 'Stacja handlowa z uslugami i dokiem.';
+      case 'station-wreck':
+      case 'ship-wreck':
+        return 'Wrak z dostepem do odzysku i napraw.';
+      case 'gate':
+        return 'Brama systemowa.';
+      case 'container':
+        return 'Obiekt srodowiskowy.';
+      case 'star':
+      case 'planet':
+      case 'moon':
+      case 'asteroid':
+      default:
+        return 'Obiekt sceny lokalnej.';
+    }
+  }
 
   private readonly handleResize = (): void => {
     this.renderer.resize(window.innerWidth, window.innerHeight);

@@ -83,10 +83,10 @@ Kryteria zamknięcia Etapu 5.5: `13_etap5.5-specyfikacja.md`, sekcje 12, 15, 16 
 ## Etap 6
 `ui/`
 - HUD,
-- menu,
+- menu wspolne z profilami obiektow,
 - dock,
 - salvage,
-- inventory,
+- inventory (pod ship status, nie jako globalna sekcja),
 - ship status.
 
 Kryteria zamknięcia Etapu 6: edycja UI zintegrowana z systemem gry i gotowa do feedback'ów z testów.

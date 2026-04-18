@@ -1,0 +1,249 @@
+#hud-layer .stage6-topbar,
+#hud-layer .stage6-target-panel,
+#hud-layer .stage6-ship-panel,
+#hud-layer .stage6-context-panel,
+#hud-layer .stage6-radar {
+  pointer-events: none;
+}
+
+.stage6-topbar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: min(86vw, 780px);
+  padding: 10px 14px;
+  border: 1px solid rgba(118, 168, 184, 0.5);
+  background: linear-gradient(180deg, rgba(3, 15, 22, 0.92), rgba(6, 25, 33, 0.85));
+  color: #ddf2f7;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+
+.stage6-topbar-title {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f5fbfd;
+}
+
+.stage6-topbar-meta,
+.stage6-topbar-economy {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9bc4d0;
+}
+
+.stage6-target-panel,
+.stage6-ship-panel,
+.stage6-context-panel {
+  position: absolute;
+  width: min(34vw, 320px);
+  padding: 12px;
+  border: 1px solid rgba(118, 168, 184, 0.45);
+  background: linear-gradient(160deg, rgba(6, 19, 27, 0.9), rgba(7, 27, 37, 0.82));
+  color: #d6ebf0;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+.stage6-target-panel {
+  left: 16px;
+  bottom: 16px;
+}
+
+.stage6-ship-panel {
+  right: 16px;
+  bottom: 16px;
+}
+
+.stage6-context-panel {
+  left: 16px;
+  top: 96px;
+  width: min(36vw, 360px);
+}
+
+.stage6-target-panel h3,
+.stage6-ship-panel h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 0.07em;
+  color: #9ecad7;
+}
+
+.stage6-target-name {
+  margin-bottom: 8px;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: #f8fbfe;
+}
+
+.stage6-empty {
+  color: #9bc4d0;
+}
+
+.stage6-kv {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9ec7d2;
+}
+
+.stage6-kv strong {
+  color: #f7fafc;
+  font-weight: 700;
+}
+
+.stage6-reactor-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(158, 200, 214, 0.25);
+}
+
+.stage6-reactor-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #bfdce5;
+  text-transform: uppercase;
+}
+
+.stage6-reactor-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8db7c4;
+}
+
+.stage6-context-title {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9dc7d3;
+}
+
+.stage6-context-copy {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #d6edf3;
+}
+
+.stage6-radar {
+  position: absolute;
+  right: 24px;
+  bottom: 268px;
+  width: 144px;
+  height: 144px;
+  border: 1px solid rgba(120, 177, 196, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.26);
+  image-rendering: pixelated;
+}
+
+.stage6-menu-panel {
+  position: absolute;
+  top: 120px;
+  right: 16px;
+  width: min(40vw, 360px);
+  max-height: 62vh;
+  display: none;
+  padding: 12px;
+  border: 1px solid rgba(121, 184, 201, 0.55);
+  background: linear-gradient(180deg, rgba(4, 16, 24, 0.96), rgba(7, 25, 33, 0.92));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  font-family: 'Courier New', monospace;
+  color: #d8eff4;
+  pointer-events: auto;
+}
+
+.stage6-menu-panel.is-open {
+  display: block;
+}
+
+.stage6-breadcrumbs {
+  margin-bottom: 10px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: #94becc;
+}
+
+.stage6-menu-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 42vh;
+  overflow-y: auto;
+  border: 1px solid rgba(128, 180, 196, 0.24);
+}
+
+.stage6-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(128, 180, 196, 0.13);
+  font-size: 12px;
+  color: #b8d6e0;
+}
+
+.stage6-menu-item:last-child {
+  border-bottom: 0;
+}
+
+.stage6-menu-item.is-selected {
+  background: rgba(73, 148, 171, 0.28);
+  color: #f0faff;
+}
+
+.stage6-hotkey {
+  font-size: 11px;
+  color: #8cb8c5;
+}
+
+.stage6-menu-hint {
+  margin-top: 10px;
+  min-height: 32px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #95c0cd;
+}
+
+@media (max-width: 900px) {
+  .stage6-topbar {
+    top: 8px;
+    min-width: calc(100vw - 16px);
+    padding: 8px 10px;
+  }
+
+  .stage6-context-panel {
+    display: none;
+  }
+
+  .stage6-target-panel,
+  .stage6-ship-panel {
+    width: calc(50vw - 18px);
+    bottom: 8px;
+    padding: 10px;
+  }
+
+  .stage6-target-panel {
+    left: 8px;
+  }
+
+  .stage6-ship-panel {
+    right: 8px;
+  }
+
+  .stage6-radar {
+    right: 8px;
+    bottom: 182px;
+    width: 116px;
+    height: 116px;
+  }
+
+  .stage6-menu-panel {
+    top: 94px;
+    right: 8px;
+    width: calc(100vw - 16px);
+    max-height: 46vh;
+  }
+}
