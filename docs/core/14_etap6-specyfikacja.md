@@ -59,6 +59,18 @@ Zasady:
 - runtime payload składa finalne drzewo menu i finalny model HUD dla aktywnego kontekstu,
 - UI renderuje payload i nie duplikuje logiki domenowej.
 
+### 5. Parametry dokowania (`E`)
+Dokowanie jest akcją wejścia do menu obiektowego obiektu dokowalnego.
+
+Minimalny zestaw danych:
+- `dockable: boolean` - flaga, czy obiekt przyjmuje dokowanie,
+- `dockInteractionDistancePx: number` - próg interakcji dokowania liczony w pikselach,
+- `playerRenderBounds` - pole renderu statku gracza,
+- `targetRenderBounds` - pole renderu obiektu dokowalnego.
+
+Konfiguracja runtime etapu 6:
+- `dockInteractionDistancePx = 20`.
+
 ## Wyjście
 
 ### 1. Menu obiektowe
@@ -118,6 +130,25 @@ Zasady:
 - kontener, wrak i statek gracza mogą mieć osobne reguły dostępności dla tych samych pozycji katalogu bazowego,
 - element menu pozostaje widoczny tylko wtedy, gdy profil obiektu nadal go wystawia,
 - jeżeli obiekt ma zachować akcję po utracie zawartości, ta akcja musi wynikać z profilu stanu, a nie z danych zawartości.
+
+### 1.3. Reguły startowe `objectState` i `menuProfile` (encje z seeda)
+W etapie 6 obowiązuje minimalny, deterministyczny model przejścia stanu.
+
+Reguły:
+- źródło danych wejściowych: encja z seeda (`objectType`, flagi stanu, `dockable`),
+- priorytet wyliczania `objectState`: `destroyed` > `disabled` > `docked` > `looted` > `active`,
+- `menuProfile` wyznacza się przez parę (`objectType`, `objectState`),
+- brak dopasowania mapowania oznacza użycie profilu domyślnego `objectType.default`.
+
+Mapowanie startowe:
+- `playerShip.active` -> `playerShip.default`,
+- `playerShip.docked` -> `playerShip.docked`,
+- `station.active` -> `station.default`,
+- `station.destroyed` -> `station.destroyed`,
+- `wreck.active` -> `wreck.default`,
+- `wreck.looted` -> `wreck.looted`,
+- `container.active` -> `container.default`,
+- `container.looted` -> `container.looted`.
 
 ### 2. Podział odpowiedzialności między obiektami
 Obiekt nie definiuje całego interfejsu samodzielnie.
@@ -202,6 +233,8 @@ Zasady:
 - `Esc` w trybie gry, gdy nie ma aktywnego menu obiektowego, otwiera menu gry (zapis, keybind, ustawienia),
 - `B` w trybie gry, gdy nie ma aktywnego menu obiektowego, otwiera menu obiektowe statku gracza,
 - `E` w trybie gry, gdy gracz jest w zasięgu obiektu dokowalnego, wykonuje dokowanie i otwiera menu obiektowe tego obiektu,
+- warunek zasięgu dokowania: odległość między polami renderu (`playerRenderBounds`, `targetRenderBounds`) nie przekracza `dockInteractionDistancePx`,
+- w etapie 6 próg dokowania jest jawny i ustawiony na `20 px`,
 - wejście do pozycji z dziećmi otwiera podmenu jako nowy poziom,
 - powrót do poziomu wyżej jest jawny i dostępny także jako pozycja `Esc` możliwa do zatwierdzenia `Enter`,
 - struktura breadcrumb pokazuje aktualną ścieżkę,
@@ -211,6 +244,13 @@ Zasady:
 - menu wspiera pełną obsługę myszą (klik pozycji oraz klik przycisku `Esc`),
 - każda pozycja menu ma przypisany skrót literowy widoczny przed nazwą,
 - resolver skrótów działa tak: pierwsza litera nazwy, potem kolejne litery nazwy przy kolizji, a gdy brak wolnych liter w nazwie - pierwsza wolna litera alfabetycznie.
+
+Drzewo startowe `menu gry` (otwierane przez `Esc` poza menu obiektowym):
+- `Resume` - zamknięcie menu gry i powrót do symulacji,
+- `Save Game` - zapis stanu gry do aktywnego slotu,
+- `Keybindings` - otwarcie ekranu mapowania klawiszy,
+- `Settings` - otwarcie panelu ustawień (audio/video/gameplay),
+- `Exit to Main Menu` - powrót do menu głównego aplikacji.
 
 ### 8. Struktura katalogu bazowego
 Katalog bazowy ma być opisany tak, aby można było łatwo dopinać nowe elementy do drzewa bez przepisywania istniejących definicji.
@@ -239,6 +279,7 @@ Zasady:
 - Jeżeli użytkownik naciśnie `Esc` na poziomie bazowym menu, system zamyka menu i wraca do trybu gry.
 - Jeżeli użytkownik naciśnie `Esc` poza menu obiektowym, system otwiera menu gry.
 - Jeżeli użytkownik naciśnie `B` poza menu obiektowym, system otwiera menu obiektowe statku gracza.
+- Jeżeli użytkownik naciśnie `E` poza menu obiektowym i obiekt ma `dockable = false`, system nie otwiera żadnego menu.
 - Jeżeli użytkownik naciśnie `E` poza menu obiektowym i nie ma w zasięgu obiektu dokowalnego, system nie otwiera żadnego menu.
 
 ## Reguły modelu menu
@@ -283,6 +324,36 @@ Zasady:
 - obiekt może rozszerzyć element o własne dziecko,
 - obiekt może ukryć element bez usuwania go z katalogu,
 - modyfikacje dotyczą profilu, nie kopii danych.
+
+## Ustalenia startowe (minimalne, odblokowujące etap 6)
+Poniższe wartości są wiążące dla implementacji etapu 6 i mogą być rozszerzone w kolejnych etapach bez łamania kontraktu.
+
+1. Źródło runtime dla `target` i relacji:
+- źródło `target`: aktywny wybór z systemu targetowania gracza,
+- źródło `relation`: runtime resolver relacji frakcji gracza do frakcji celu,
+- mapowanie relacji: `friendly`, `neutral`, `hostile`, `unknown`,
+- brak danych frakcyjnych celu oznacza `unknown`.
+
+2. Jawna konfiguracja runtime radaru:
+- `radar.baseRangeUnits = 1200`,
+- `radar.rangeModifier = 1.0`,
+- `radar.minRangeUnits = 300`,
+- `radar.rangeUnits = max(radar.minRangeUnits, radar.baseRangeUnits * radar.rangeModifier)`,
+- `radar.noiseSeed` pochodzi z deterministycznego seeda systemu.
+
+3. Kryterium `nieodświeżony` dla panelu HUD:
+- każdy panel przechowuje `lastDataTick`,
+- panel jest oznaczony jako `nieodswiezony`, gdy brakuje nowych danych przez 2 kolejne ticki,
+- gdy istnieje ostatni poprawny stan, panel renderuje ten stan z flagą `nieodswiezony`,
+- gdy brak ostatniego poprawnego stanu, panel renderuje `N/A`.
+
+Status etapu 6:
+- punkt dokowania (`E`, próg `20 px`) jest doprecyzowany,
+- źródło i mapowanie `objectState/menuProfile` jest doprecyzowane,
+- drzewo `menu gry` pod `Esc` jest doprecyzowane,
+- źródło `target/relation` jest doprecyzowane,
+- konfiguracja startowa radaru jest doprecyzowana,
+- kryterium `nieodswiezony` HUD jest doprecyzowane.
 
 ## Kryterium zgodności
 
@@ -340,6 +411,12 @@ Definicja low-res:
 - relacje maja stale mapowanie kolorow: `friendly` - niebieski, `neutral` - bialy, `hostile` - czerwony, `unknown` - szary,
 - nowe statusy relacji wymagaja dopisania koloru w konfiguracji.
 
+Konfiguracja startowa runtime (etap 6):
+- `baseRangeUnits = 1200`,
+- `rangeModifier = 1.0`,
+- `minRangeUnits = 300`,
+- `rangeUnits = max(minRangeUnits, baseRangeUnits * rangeModifier)`.
+
 #### 3. Prawy dolny - status statku
 - `shipStatus.shield.currentHp: number`,
 - `shipStatus.shield.maxHp: number`,
@@ -387,6 +464,11 @@ Interpretacja wartości pustych:
 - `null` oznacza brak danych albo brak zastosowania dla danego typu obiektu,
 - przy `target.selected = false` panel pozostaje widoczny i renderuje stan pusty.
 
+Źródło danych runtime celu:
+- `target` pochodzi z aktywnego systemu targetowania gracza,
+- `target.relation` pochodzi z resolvera relacji frakcji,
+- gdy brak danych relacji, stosowana jest wartość `unknown`.
+
 ### Parametry wyjsciowe
 
 #### 1. Render paneli rogowych
@@ -427,7 +509,8 @@ System renderuje stale 4 panele HUD z aktualizacja oparta o biezacy stan runtime
 - odswiezanie wartosci HUD jest wyzwalane zdarzeniami domenowymi i tickiem symulacji,
 - kazdy panel pobiera dane tylko ze swojego modelu,
 - awaria pojedynczego panelu nie blokuje renderu pozostalych paneli,
-- jezeli wartosc jest niedostepna, panel wyswietla `N/A`.
+- jezeli wartosc jest niedostepna, panel wyswietla `N/A`,
+- panel przechowuje `lastDataTick` i przechodzi w stan `nieodswiezony` po 2 kolejnych brakujacych tickach.
 
 #### 2. Radar i skala zasiegu
 - zasieg efektywny oblicza sie jako `baseRangeUnits * rangeModifier`,
