@@ -1,0 +1,164 @@
+/* Menu obiektowe i menu gry (Esc) */
+
+/* ---- Overlay (caly ekran) ---- */
+#menu-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#menu-overlay.menu-visible {
+  display: flex;
+  pointer-events: none;
+}
+
+/* ---- Panel menu (prawa strona) ---- */
+#menu-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  background: rgba(0, 10, 4, 0.92);
+  border-left: 1px solid rgba(61, 255, 160, 0.2);
+  display: flex;
+  flex-direction: column;
+  pointer-events: all;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+/* ---- Naglowek ---- */
+#menu-header {
+  padding: 20px 20px 12px;
+  font-size: 16px;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  color: #3dffa0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(61, 255, 160, 0.18);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Breadcrumb ---- */
+#menu-breadcrumb {
+  padding: 6px 20px;
+  font-size: 10px;
+  color: rgba(61, 255, 160, 0.45);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  min-height: 22px;
+}
+
+.breadcrumb-segment {
+  color: rgba(61, 255, 160, 0.5);
+}
+
+.breadcrumb-sep {
+  color: rgba(61, 255, 160, 0.25);
+}
+
+/* ---- Lista pozycji ---- */
+#menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(61, 255, 160, 0.2) transparent;
+}
+
+#menu-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+#menu-list::-webkit-scrollbar-thumb {
+  background: rgba(61, 255, 160, 0.2);
+  border-radius: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.menu-item:hover {
+  background: rgba(61, 255, 160, 0.06);
+}
+
+.menu-item--active {
+  background: rgba(61, 255, 160, 0.1);
+  border-left-color: #3dffa0;
+}
+
+.hotkey-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(61, 255, 160, 0.35);
+  border-radius: 3px;
+  font-size: 10px;
+  color: rgba(61, 255, 160, 0.7);
+  flex-shrink: 0;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+.menu-item--active .hotkey-badge {
+  border-color: #3dffa0;
+  color: #3dffa0;
+}
+
+.item-label {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(200, 255, 220, 0.85);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  letter-spacing: 0.02em;
+}
+
+.menu-item--active .item-label {
+  color: #ffffff;
+}
+
+.item-arrow {
+  color: rgba(61, 255, 160, 0.4);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ---- Panel zawartości kontekstowej (lewa strona) ---- */
+#menu-content-area {
+  position: absolute;
+  left: 0;
+  right: 300px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 0 24px 40px;
+  pointer-events: none;
+}
+
+#menu-content-area.has-description {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 12px;
+  color: rgba(150, 220, 180, 0.55);
+  line-height: 1.6;
+  max-width: 380px;
+}

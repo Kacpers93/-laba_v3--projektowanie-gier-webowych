@@ -20,6 +20,8 @@
   pointer-events: none;
 }
 
+/* screen-layer jest domyslnie pass-through; menu-overlay wewnatrz ustawia
+   pointer-events: all na #menu-panel gdy jest widoczny. */
 #screen-layer {
   z-index: 2;
   pointer-events: none;

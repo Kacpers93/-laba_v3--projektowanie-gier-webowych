@@ -15,6 +15,11 @@ export class WorldEntity extends BaseEntity {
   public readonly seedType: RuntimeSeedObjectType;
   public readonly isStatic: boolean;
   public readonly profileId: string;
+  /**
+   * Czy obiekt przyjmuje dokowanie gracza (klawisz E).
+   * Domyslnie false; stacje i wraki ustawiaja true po zaladowaniu seeda.
+   */
+  public dockable: boolean;
 
   public constructor(config: {
     id: string;
@@ -26,12 +31,14 @@ export class WorldEntity extends BaseEntity {
     computedHeight: number;
     isStatic: boolean;
     profileId: string;
+    dockable?: boolean;
   }) {
     super(config.id, config.category, config.position);
     this.seedType = config.seedType;
     this.computedHeight = config.computedHeight;
     this.isStatic = config.isStatic;
     this.profileId = config.profileId;
+    this.dockable = config.dockable ?? false;
     this.boundingBox = {
       min: new Vec2(-config.width / 2, -config.height / 2),
       max: new Vec2(config.width / 2, config.height / 2),

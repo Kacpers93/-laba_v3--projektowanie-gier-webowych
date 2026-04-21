@@ -21,6 +21,7 @@
       "@physics/*": ["./src/physics/*"],
       "@presentation/*": ["./src/presentation/*"],
       "@systems/*": ["./src/systems/*"],
+      "@ui/*": ["./src/ui/*"],
       "@world/*": ["./src/world/*"],
       "@types/*": ["./src/types/*"]
     }

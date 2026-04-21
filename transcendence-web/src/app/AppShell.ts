@@ -34,6 +34,18 @@ import {
 import type { SeedObjectType, SystemLoadResult } from '@world/seed';
 import type { Vector2 } from '@/types/common';
 import type { Renderable } from '@/types/engine';
+import { HudController } from '@ui/hud/HudController';
+import { MenuController } from '@ui/menu/MenuController';
+import { MenuRegistry } from '@ui/menu/MenuRegistry';
+import { MenuView } from '@ui/menu/MenuView';
+import {
+  RADAR_DEFAULT_CONFIG,
+  REACTOR_TEST_PAYLOAD,
+  SHIP_STATUS_TEST_PAYLOAD,
+  TARGET_EMPTY_PAYLOAD,
+} from '@ui/types/hudTypes';
+import type { HudContext, RadarContact } from '@ui/types/hudTypes';
+import type { MenuObjectType, ObjectState } from '@ui/types/menuTypes';
 
 const CAMERA_SPEED = 220;
 const DEV_OVERLAY_UPDATE_INTERVAL = 0.25;
@@ -178,6 +190,12 @@ export class AppShell {
   private devOverlayMounted = false;
   private devOverlayMountRequested = false;
 
+  // UI – HUD i menu (etap 6)
+  private readonly hudController: HudController;
+  private readonly menuController: MenuController;
+  private readonly menuRegistry: MenuRegistry;
+  private readonly menuView: MenuView;
+
   private started = false;
 
   public constructor(root: HTMLElement) {
@@ -201,6 +219,16 @@ export class AppShell {
     this.audioManager = new AudioManager();
     this.inputModeManager = new InputModeManager();
     this.initializeInputControllers();
+
+    // UI – inicjalizacja (etap 6); musi byc po InputModeManager
+    this.menuRegistry = new MenuRegistry();
+    this.menuView = new MenuView();
+    this.menuController = new MenuController(
+      this.menuRegistry,
+      this.menuView,
+      this.inputModeManager,
+    );
+    this.hudController = new HudController();
 
     this.cache = new OffscreenCache();
     this.entityManager = new EntityManager();
@@ -430,6 +458,7 @@ export class AppShell {
 
     this.bindInputModeLogs();
     this.bindAudioInit();
+    this.bindMenuKeys();
   }
 
   public async start(): Promise<void> {
@@ -484,6 +513,17 @@ export class AppShell {
       },
     );
 
+    // Zainicjuj stacje i wraki jako dockable
+    this.markDockableEntities();
+
+    // Zamontuj HUD i menu po zaladowaniu systemu
+    this.hudController.mount(this.hudLayer);
+    this.menuView.mount(this.screenLayer, {
+      onSelect: () => { /* obsluzone wewnatrz MenuController */ },
+      onBack: () => { /* obsluzone wewnatrz MenuController */ },
+      onClose: () => { this.menuController.close(); },
+    });
+
     this.canvas.focus();
     this.gameLoop.start();
   }
@@ -499,6 +539,9 @@ export class AppShell {
     this.uiInput.destroy();
     this.inputControllersActive = false;
     this.unbindRuntimeListeners();
+
+    this.hudController.unmount();
+    this.menuView.unmount();
 
     if (import.meta.env.DEV) {
       this.devOverlayMountRequested = false;
@@ -681,6 +724,9 @@ export class AppShell {
 
     this.sceneRenderer.update(dt, this.camera);
 
+    // Aktualizuj HUD kazdy frame (etap 6)
+    this.updateHud(dt);
+
     if (!this.devOverlay) {
       return;
     }
@@ -693,6 +739,70 @@ export class AppShell {
     this.devOverlayUpdateElapsed = 0;
     this.devOverlay.update();
   };
+
+  /** Buduje HudContext z biezacego stanu gry i przekazuje do HudController. */
+  private updateHud(dt: number): void {
+    if (!this.playerShipEntity) {
+      this.hudController.update(null);
+      return;
+    }
+
+    const player = this.playerShipEntity;
+
+    // Kontakty radaru z EntityManager
+    const radarContacts: RadarContact[] = this.entityManager.getAll()
+      .filter((e) => e.id !== player.id)
+      .map((e): RadarContact => {
+        const we = e instanceof WorldEntity ? e : null;
+        const type = we
+          ? ((
+              we.seedType === 'station' || we.seedType === 'station-wreck' ? 'station'
+            : we.seedType === 'ship-wreck' ? 'wreck'
+            : we.seedType === 'npc-ship' ? 'ship'
+            : we.seedType === 'container' ? 'container'
+            : we.seedType === 'star' ? 'star'
+            : we.seedType === 'planet' || we.seedType === 'moon' ? 'planet'
+            : 'other'
+          ) as RadarContact['type'])
+          : 'other';
+
+        return {
+          id: e.id,
+          type,
+          relation: 'neutral' as const,
+          worldX: e.position.x,
+          worldY: e.position.y,
+          active: true,
+        };
+      });
+
+    const radarRange = Math.max(
+      RADAR_DEFAULT_CONFIG.minRangeUnits,
+      RADAR_DEFAULT_CONFIG.baseRangeUnits * RADAR_DEFAULT_CONFIG.rangeModifier,
+    );
+
+    const context: HudContext = {
+      timestampMs: performance.now(),
+      playerShipId: player.id,
+      hudLayoutId: 'default',
+      reactor: REACTOR_TEST_PAYLOAD,
+      radar: {
+        rangeUnits: radarRange,
+        baseRangeUnits: RADAR_DEFAULT_CONFIG.baseRangeUnits,
+        rangeModifier: RADAR_DEFAULT_CONFIG.rangeModifier,
+        centerWorld: { x: player.position.x, y: player.position.y },
+        contacts: radarContacts,
+        noiseSeed: 42,
+      },
+      shipStatus: {
+        ...SHIP_STATUS_TEST_PAYLOAD,
+        velocity: { currentPxPerSec: player.speed },
+      },
+      target: TARGET_EMPTY_PAYLOAD,
+    };
+
+    this.hudController.update(context);
+  }
 
   private readonly onFrameRender = (alpha: number): void => {
     this.sceneRenderer.render(this.renderer.ctx, this.camera, alpha);
@@ -737,6 +847,125 @@ export class AppShell {
     this.uiInput.onCancel(() => {
       this.inputModeManager.setMode('game');
     });
+  }
+
+  /**
+   * Obsuga klawiszy menu (etap 6):
+   * Esc  – menu gry (gdy nie ma otwartego menu obiektowego)
+   * B    – menu statku gracza
+   * E    – dokowanie do najblizszego obiektu dokowalnego
+   */
+  private bindMenuKeys(): void {
+    window.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (this.menuController.isMenuOpen) {
+        // Nawigacja jest obsługiwana przez MenuController
+        return;
+      }
+
+      if (this.inputModeManager.mode !== 'game') {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.menuController.openGameMenu();
+        return;
+      }
+
+      if (event.key === 'b' || event.key === 'B') {
+        event.preventDefault();
+        const label = this.playerShipEntity?.id ?? 'Player Ship';
+        this.menuController.openPlayerShipMenu(label);
+        return;
+      }
+
+      if (event.key === 'e' || event.key === 'E') {
+        event.preventDefault();
+        this.tryDockNearestEntity();
+        return;
+      }
+    });
+  }
+
+  /**
+   * Ustawia dockable = true dla stacji i wraków zaladowanych z seeda.
+   */
+  private markDockableEntities(): void {
+    this.entityManager.getAll().forEach((entity) => {
+      if (!(entity instanceof WorldEntity)) {
+        return;
+      }
+
+      const dockable =
+        entity.seedType === 'station' ||
+        entity.seedType === 'station-wreck' ||
+        entity.seedType === 'ship-wreck' ||
+        entity.seedType === 'container';
+
+      if (dockable) {
+        entity.dockable = true;
+      }
+    });
+  }
+
+  /**
+   * Szuka najbliższego obiektu dockable w zasięgu 20 px renderowanych granic
+   * i próbuje dokować.
+   */
+  private tryDockNearestEntity(): void {
+    if (!this.playerShipEntity) {
+      return;
+    }
+
+    const player = this.playerShipEntity;
+    const playerBounds = {
+      minX: player.position.x + player.boundingBox.min.x,
+      minY: player.position.y + player.boundingBox.min.y,
+      maxX: player.position.x + player.boundingBox.max.x,
+      maxY: player.position.y + player.boundingBox.max.y,
+    };
+
+    // Szukamy dockable w zasiegu
+    const candidates = this.entityManager.getAll().filter(
+      (e): e is WorldEntity => e instanceof WorldEntity && e.dockable,
+    );
+
+    for (const candidate of candidates) {
+      const targetBounds = {
+        minX: candidate.position.x + candidate.boundingBox.min.x,
+        minY: candidate.position.y + candidate.boundingBox.min.y,
+        maxX: candidate.position.x + candidate.boundingBox.max.x,
+        maxY: candidate.position.y + candidate.boundingBox.max.y,
+      };
+
+      const objectType: MenuObjectType = (
+        candidate.seedType === 'station' || candidate.seedType === 'station-wreck' ? 'station'
+        : candidate.seedType === 'ship-wreck' ? 'wreck'
+        : candidate.seedType === 'container' ? 'container'
+        : 'station'
+      );
+
+      const objectState: ObjectState = (
+        candidate.seedType === 'station-wreck' || candidate.seedType === 'ship-wreck' ? 'destroyed'
+        : 'active'
+      );
+
+      const docked = this.menuController.tryDock(
+        {
+          id: candidate.id,
+          objectType,
+          objectState,
+          sceneLabel: candidate.id,
+          dockable: true,
+          screenBounds: targetBounds,
+        },
+        playerBounds,
+      );
+
+      if (docked) {
+        break;
+      }
+    }
   }
 
   private bindAudioInit(): void {

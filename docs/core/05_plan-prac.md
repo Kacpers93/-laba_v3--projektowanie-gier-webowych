@@ -11,7 +11,8 @@ Pracujemy warstwami produkcyjnymi, nie listą przypadkowych feature'ów.
 - Etap 4: wdrożony.
 - Etap 5: wdrożony.
 - Etap 5.5: wdrożony.
-- Etapy 6–11: planowane.
+- Etap 6: wdrożony.
+- Etapy 7–11: planowane.
 
 ## Etap 1
 `app/`, `engine/`, `physics/`, `types/`
