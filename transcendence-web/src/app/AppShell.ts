@@ -15,7 +15,6 @@ import { OffscreenCache } from '@presentation/cache/OffscreenCache';
 import { VisualProfileRegistry } from '@presentation/profiles';
 import type { VisualProfile } from '@presentation/profiles';
 import { EntityRenderable, RenderableFactory } from '@presentation/renderables';
-import { BackgroundLayer } from '@presentation/scene/BackgroundLayer';
 import { DebugLayer } from '@presentation/scene/DebugLayer';
 import { EffectsLayer } from '@presentation/scene/EffectsLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
@@ -159,7 +158,6 @@ export class AppShell {
   private readonly systemSeedLoader: SystemSeedLoader;
   private readonly cache: OffscreenCache;
   private readonly assetLoader: AssetLoader;
-  private readonly backgroundLayer: BackgroundLayer;
   private readonly featureModules: FeatureModule[];
   private readonly worldLayer: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
@@ -238,16 +236,6 @@ export class AppShell {
     EntityRenderable.pixelSnapStatic = this.pixelSnapStatic;
 
     this.sceneRenderer = new SceneRenderer();
-
-    this.backgroundLayer = new BackgroundLayer(this.cache, this.renderer.pixelWidth, this.renderer.pixelHeight, {
-      starCount: 400,
-      minBrightness: 0.3,
-      maxBrightness: 1.0,
-      minSize: 0.3,
-      maxSize: 0.8,
-      depthFactor: 0.015,
-    });
-    this.sceneRenderer.addLayer(this.backgroundLayer);
 
     this.worldLayer = new WorldLayer();
     this.sceneRenderer.addLayer(this.worldLayer);
@@ -818,7 +806,6 @@ export class AppShell {
     this.renderer.resize(window.innerWidth, window.innerHeight);
     this.camera.setViewport(this.renderer.width, this.renderer.height);
     this.camera.setRenderScale(this.renderer.scale);
-    this.backgroundLayer.regenerate(this.renderer.pixelWidth, this.renderer.pixelHeight);
     this.featureModules.forEach((module) => {
       module.onResize(this.renderer.pixelWidth, this.renderer.pixelHeight);
     });

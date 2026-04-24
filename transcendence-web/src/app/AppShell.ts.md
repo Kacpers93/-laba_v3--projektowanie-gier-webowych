@@ -1,5 +1,5 @@
 ## Cel pliku
-Plik definiuje glowna klase spinajaca runtime aplikacji: renderer, petle gry, input, audio, encje, cache i warstwy sceny. Odpowiada tez za start/stop aplikacji i logike dev-overlay.
+Plik definiuje glowna klase spinajaca runtime aplikacji: renderer, petle gry, input, audio, encje oraz composition root modulow feature. Odpowiada tez za start/stop aplikacji i logike dev-overlay.
 
 ## Co eksportuje
 - Klasa AppShell
@@ -20,3 +20,4 @@ await appShell.start();
 ## Czego NIE robi
 - Nie wczytuje wielu niezaleznych scen lub systemow gwiezdnych.
 - Nie implementuje mechanik gameplay (np. kolizji, AI, ekonomii) jako oddzielnych systemow domenowych.
+- Nie tworzy bezposrednio warstw feature, takich jak background lub parallax; robi to rejestr modulow w app/composition.

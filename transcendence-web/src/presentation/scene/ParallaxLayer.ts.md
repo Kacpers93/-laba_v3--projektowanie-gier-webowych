@@ -1,23 +1,19 @@
 ## Cel pliku
-Plik implementuje warstwe paralaksy skladajaca sie z wielu subwarstw z offsetem zaleznym od kamery. Korzysta z OffscreenCache, wspiera tiling tekstur tla i render reagujacy na zoom kamery.
+Plik jest warstwa kompatybilnosci i re-exportuje implementacje ParallaxLayer z modulu feature `src/features/parallax`.
 
 ## Co eksportuje
 - Interfejs ParallaxSublayerConfig
 - Klasa ParallaxLayer
 
 ## Zaleznosci zewnetrzne i wewnetrzne
-- Zewnetrzne: CanvasRenderingContext2D, Math.
-- Wewnetrzne: src/engine/renderer/Camera.ts, src/presentation/cache/OffscreenCache.ts, src/presentation/scene/SceneLayer.ts.
+- Zewnetrzne: brak.
+- Wewnetrzne: src/features/parallax/index.ts.
 
 ## Jak uzywac (minimalny przyklad)
 ```ts
 import { ParallaxLayer } from './ParallaxLayer';
-
-const layer = new ParallaxLayer(cache, width, height, configs);
-layer.update(0.016, camera);
-layer.render(ctx, camera, 0.5);
 ```
 
 ## Czego NIE robi
-- Nie zarzadza aktywnym wyborem presetow.
-- Nie renderuje obiektow swiata ani UI.
+- Nie zawiera logiki renderowania paralaksy.
+- Nie jest zrodlem prawdy dla presetow paralaksy.

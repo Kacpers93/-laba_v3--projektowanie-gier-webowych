@@ -1,28 +1,19 @@
 ## Cel pliku
-Plik implementuje warstwe tla gwiazd z cachowaniem na OffscreenCanvas. Generuje deterministyczny rozklad gwiazd (dla seeda), przesuwa tlo wzgledem kamery (depth factor), reaguje na zoom kamery i wspiera regeneracje po resize.
+Plik jest warstwa kompatybilnosci i re-exportuje implementacje BackgroundLayer z modulu feature `src/features/background`.
 
 ## Co eksportuje
 - Interfejs BackgroundConfig
 - Klasa BackgroundLayer
 
 ## Zaleznosci zewnetrzne i wewnetrzne
-- Zewnetrzne: CanvasRenderingContext2D, Math.
-- Wewnetrzne: src/engine/renderer/Camera.ts, src/presentation/cache/OffscreenCache.ts, src/presentation/scene/SceneLayer.ts.
+- Zewnetrzne: brak.
+- Wewnetrzne: src/features/background/index.ts.
 
 ## Jak uzywac (minimalny przyklad)
 ```ts
 import { BackgroundLayer } from './BackgroundLayer';
-
-const layer = new BackgroundLayer(cache, width, height, {
-  starCount: 300,
-  minBrightness: 0.3,
-  maxBrightness: 1,
-  minSize: 0.5,
-  maxSize: 2,
-  depthFactor: 0.02,
-});
 ```
 
 ## Czego NIE robi
-- Nie renderuje encji swiata.
-- Nie zarzadza paralaksa wielowarstwowa.
+- Nie zawiera logiki renderowania tla.
+- Nie jest zrodlem prawdy dla konfiguracji background.
