@@ -15,8 +15,6 @@ import { OffscreenCache } from '@presentation/cache/OffscreenCache';
 import { VisualProfileRegistry } from '@presentation/profiles';
 import type { VisualProfile } from '@presentation/profiles';
 import { EntityRenderable, RenderableFactory } from '@presentation/renderables';
-import { DebugLayer } from '@presentation/scene/DebugLayer';
-import { EffectsLayer } from '@presentation/scene/EffectsLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@presentation/scene/WorldLayer';
 import type { FeatureModule } from './composition/FeatureModule';
@@ -159,7 +157,7 @@ export class AppShell {
   private readonly cache: OffscreenCache;
   private readonly assetLoader: AssetLoader;
   private readonly featureModules: FeatureModule[];
-  private readonly worldLayer: WorldLayer;
+  private worldLayer!: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
   private devOverlay?: DevOverlayLike;
   private activeSpriteTestProfileId: string | null = null;
@@ -236,11 +234,6 @@ export class AppShell {
     EntityRenderable.pixelSnapStatic = this.pixelSnapStatic;
 
     this.sceneRenderer = new SceneRenderer();
-
-    this.worldLayer = new WorldLayer();
-    this.sceneRenderer.addLayer(this.worldLayer);
-    this.sceneRenderer.addLayer(new EffectsLayer());
-    this.sceneRenderer.addLayer(new DebugLayer());
     this.featureModules = registerFeatureModules({
       cache: this.cache,
       sceneRenderer: this.sceneRenderer,
@@ -248,6 +241,12 @@ export class AppShell {
         pixelWidth: this.renderer.pixelWidth,
         pixelHeight: this.renderer.pixelHeight,
       }),
+    }, {
+      worldScene: {
+        onWorldLayerReady: (worldLayer) => {
+          this.worldLayer = worldLayer;
+        },
+      },
     });
 
     this.systemSeedLoader = new SystemSeedLoader(

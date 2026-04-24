@@ -1,21 +1,18 @@
 ## Cel pliku
-Plik implementuje warstwe debug z siatka swiata i znacznikiem centrum kamery. Warstwa moze byc przelaczana klawiszem G.
+Plik jest warstwa kompatybilnosci i re-exportuje implementacje DebugLayer z modulu feature `src/features/world-scene`.
 
 ## Co eksportuje
 - Klasa DebugLayer
 
 ## Zaleznosci zewnetrzne i wewnetrzne
-- Zewnetrzne: DOM event keydown, CanvasRenderingContext2D.
-- Wewnetrzne: src/engine/renderer/Camera.ts, src/presentation/scene/SceneLayer.ts.
+- Zewnetrzne: brak.
+- Wewnetrzne: src/features/world-scene/index.ts.
 
 ## Jak uzywac (minimalny przyklad)
 ```ts
 import { DebugLayer } from './DebugLayer';
-
-const debugLayer = new DebugLayer();
-sceneRenderer.addLayer(debugLayer);
 ```
 
 ## Czego NIE robi
-- Nie udostepnia panelu metryk.
-- Nie diagnozuje automatycznie bledow logiki gry.
+- Nie zawiera logiki siatki debug.
+- Nie jest zrodlem prawdy dla klawiszy debug.
