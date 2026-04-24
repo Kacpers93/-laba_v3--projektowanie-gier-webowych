@@ -18,6 +18,7 @@
       "@dev/*": ["./src/dev/*"],
       "@engine/*": ["./src/engine/*"],
       "@entities/*": ["./src/entities/*"],
+      "@features/*": ["./src/features/*"],
       "@physics/*": ["./src/physics/*"],
       "@presentation/*": ["./src/presentation/*"],
       "@systems/*": ["./src/systems/*"],

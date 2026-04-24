@@ -18,10 +18,10 @@ import { EntityRenderable, RenderableFactory } from '@presentation/renderables';
 import { BackgroundLayer } from '@presentation/scene/BackgroundLayer';
 import { DebugLayer } from '@presentation/scene/DebugLayer';
 import { EffectsLayer } from '@presentation/scene/EffectsLayer';
-import { ACTIVE_PARALLAX_SUBLAYERS } from '@presentation/scene/parallax-presets';
-import { ParallaxLayer } from '@presentation/scene/ParallaxLayer';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@presentation/scene/WorldLayer';
+import type { FeatureModule } from './composition/FeatureModule';
+import { registerFeatureModules } from './composition/registerFeatureModules';
 import { PlayerShipEntity, WorldEntity } from '@world/entities';
 import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
 import { DEFAULT_FLIGHT_CONFIG } from '@systems/flight/flightConfig';
@@ -160,7 +160,7 @@ export class AppShell {
   private readonly cache: OffscreenCache;
   private readonly assetLoader: AssetLoader;
   private readonly backgroundLayer: BackgroundLayer;
-  private readonly parallaxLayer: ParallaxLayer;
+  private readonly featureModules: FeatureModule[];
   private readonly worldLayer: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
   private devOverlay?: DevOverlayLike;
@@ -249,18 +249,18 @@ export class AppShell {
     });
     this.sceneRenderer.addLayer(this.backgroundLayer);
 
-    this.parallaxLayer = new ParallaxLayer(
-      this.cache,
-      this.renderer.pixelWidth,
-      this.renderer.pixelHeight,
-      ACTIVE_PARALLAX_SUBLAYERS,
-    );
-    this.sceneRenderer.addLayer(this.parallaxLayer);
-
     this.worldLayer = new WorldLayer();
     this.sceneRenderer.addLayer(this.worldLayer);
     this.sceneRenderer.addLayer(new EffectsLayer());
     this.sceneRenderer.addLayer(new DebugLayer());
+    this.featureModules = registerFeatureModules({
+      cache: this.cache,
+      sceneRenderer: this.sceneRenderer,
+      getViewport: () => ({
+        pixelWidth: this.renderer.pixelWidth,
+        pixelHeight: this.renderer.pixelHeight,
+      }),
+    });
 
     this.systemSeedLoader = new SystemSeedLoader(
       this.entityManager,
@@ -477,6 +477,9 @@ export class AppShell {
     }
 
     this.started = true;
+    this.featureModules.forEach((module) => {
+      module.start();
+    });
     this.virtualOrbitAroundAnchors.clear();
     this.devSpawnOrbitAroundRefresh?.();
 
@@ -534,6 +537,9 @@ export class AppShell {
     }
 
     this.started = false;
+    this.featureModules.forEach((module) => {
+      module.dispose();
+    });
     this.gameLoop.stop();
     this.gameInput.destroy();
     this.uiInput.destroy();
@@ -813,7 +819,9 @@ export class AppShell {
     this.camera.setViewport(this.renderer.width, this.renderer.height);
     this.camera.setRenderScale(this.renderer.scale);
     this.backgroundLayer.regenerate(this.renderer.pixelWidth, this.renderer.pixelHeight);
-    this.parallaxLayer.regenerate(this.renderer.pixelWidth, this.renderer.pixelHeight);
+    this.featureModules.forEach((module) => {
+      module.onResize(this.renderer.pixelWidth, this.renderer.pixelHeight);
+    });
   };
 
   private readonly handleCameraZoomWheel = (event: WheelEvent): void => {
