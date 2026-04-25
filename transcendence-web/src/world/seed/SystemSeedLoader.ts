@@ -5,7 +5,7 @@ import type { EntityManager } from '@entities/base/EntityManager';
 import type { VisualProfile } from '@presentation/profiles/VisualProfile';
 import type { VisualProfileRegistry } from '@presentation/profiles/VisualProfileRegistry';
 import type { RenderableFactory } from '@presentation/renderables/RenderableFactory';
-import type { WorldLayer } from '@presentation/scene/WorldLayer';
+import type { WorldLayer } from '@features/world-scene';
 import { WorldEntity } from '@world/entities';
 import { expandAsteroidGroups } from './expandAsteroidGroups';
 import { computeOrbitPosition } from './orbitUtils';

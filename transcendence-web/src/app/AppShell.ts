@@ -6,7 +6,6 @@ import { GameLoop } from '@engine/loop/GameLoop';
 import { Camera } from '@engine/renderer/Camera';
 import { Renderer } from '@engine/renderer/Renderer';
 import { AssetLoader } from '@assets/AssetLoader';
-import { registerManifestProfiles } from '@assets/registerManifestProfiles';
 import { BaseEntity, EntityManager } from '@entities/base';
 import type { EntityCategory, GameEntity } from '@entities/base';
 import { Vec2 } from '@physics/Vector2';
@@ -16,9 +15,14 @@ import { VisualProfileRegistry } from '@presentation/profiles';
 import type { VisualProfile } from '@presentation/profiles';
 import { EntityRenderable, RenderableFactory } from '@presentation/renderables';
 import { SceneRenderer } from '@presentation/scene/SceneRenderer';
-import { WorldLayer } from '@presentation/scene/WorldLayer';
+import { WorldLayer } from '@features/world-scene';
 import type { FeatureModule } from './composition/FeatureModule';
 import { registerFeatureModules } from './composition/registerFeatureModules';
+import { createAudioFeatureModule } from '@features/audio/module';
+import { createDevToolsFeatureModule } from '@features/dev-tools/module';
+import { createInputFeatureModule } from '@features/input/module';
+import { createSeedLoadingFeatureModule } from '@features/seed-loading/module';
+import { createUiFeatureModule } from '@features/ui/module';
 import { PlayerShipEntity, WorldEntity } from '@world/entities';
 import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
 import { DEFAULT_FLIGHT_CONFIG } from '@systems/flight/flightConfig';
@@ -157,6 +161,11 @@ export class AppShell {
   private readonly cache: OffscreenCache;
   private readonly assetLoader: AssetLoader;
   private readonly featureModules: FeatureModule[];
+  private readonly inputFeature: ReturnType<typeof createInputFeatureModule>;
+  private readonly audioFeature: ReturnType<typeof createAudioFeatureModule>;
+  private readonly uiFeature: ReturnType<typeof createUiFeatureModule>;
+  private readonly seedLoadingFeature: ReturnType<typeof createSeedLoadingFeatureModule>;
+  private readonly devToolsFeature: ReturnType<typeof createDevToolsFeatureModule>;
   private worldLayer!: WorldLayer;
   private readonly renderablesByEntityId = new Map<string, Renderable>();
   private devOverlay?: DevOverlayLike;
@@ -214,7 +223,6 @@ export class AppShell {
     this.targetCameraZoom = this.camera.zoom;
     this.audioManager = new AudioManager();
     this.inputModeManager = new InputModeManager();
-    this.initializeInputControllers();
 
     // UI – inicjalizacja (etap 6); musi byc po InputModeManager
     this.menuRegistry = new MenuRegistry();
@@ -257,6 +265,41 @@ export class AppShell {
       this.renderablesByEntityId,
     );
 
+    this.inputFeature = createInputFeatureModule(this.canvas, this.inputModeManager, this.camera);
+    this.audioFeature = createAudioFeatureModule(this.audioManager, () => this.getAudioState());
+    this.uiFeature = createUiFeatureModule(
+      this.hudController,
+      this.menuController,
+      this.menuView,
+      this.hudLayer,
+      this.screenLayer,
+      this.inputModeManager,
+      {
+        getPlayerLabel: () => this.playerShipEntity?.id ?? 'Player Ship',
+        tryDockNearestEntity: () => this.tryDockNearestEntity(),
+      },
+    );
+    this.seedLoadingFeature = createSeedLoadingFeatureModule(
+      this.assetLoader,
+      this.visualProfileRegistry,
+      this.systemSeedLoader,
+    );
+    this.devToolsFeature = createDevToolsFeatureModule(DEV_OVERLAY_UPDATE_INTERVAL);
+
+    const inputControllers = this.inputFeature.start({
+      onToggleUi: () => {
+        this.inputModeManager.setMode('ui');
+      },
+      onCancelUi: () => {
+        this.inputModeManager.setMode('game');
+      },
+    });
+    this.gameInput = inputControllers.gameInput;
+    this.uiInput = inputControllers.uiInput;
+    this.inputControllersActive = true;
+
+    this.audioFeature.start();
+
     if (import.meta.env.DEV) {
       this.registerDevVisualProfiles();
       this.setDevTestEntityEnabled(this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, false));
@@ -265,10 +308,7 @@ export class AppShell {
       void import('@dev/DevOverlayPanel').then(({ DevOverlayPanel }) => {
         const overlay = new DevOverlayPanel();
         this.devOverlay = overlay;
-        if (this.devOverlayMountRequested && !this.devOverlayMounted) {
-          overlay.mount(document.body);
-          this.devOverlayMounted = true;
-        }
+        this.devToolsFeature.attachOverlay(overlay);
 
         const entitiesSection = overlay.registerSection('entities', 'Entities');
         entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
@@ -444,8 +484,6 @@ export class AppShell {
     });
 
     this.bindInputModeLogs();
-    this.bindAudioInit();
-    this.bindMenuKeys();
   }
 
   public async start(): Promise<void> {
@@ -454,13 +492,23 @@ export class AppShell {
     }
 
     if (!this.inputControllersActive) {
-      this.initializeInputControllers();
+      const inputControllers = this.inputFeature.start({
+        onToggleUi: () => {
+          this.inputModeManager.setMode('ui');
+        },
+        onCancelUi: () => {
+          this.inputModeManager.setMode('game');
+        },
+      });
+      this.gameInput = inputControllers.gameInput;
+      this.uiInput = inputControllers.uiInput;
+      this.inputControllersActive = true;
     }
 
     this.bindRuntimeListeners();
     if (import.meta.env.DEV) {
-      this.devOverlayMountRequested = true;
-      this.mountDevOverlayIfReady();
+      this.devToolsFeature.bindHotkeys();
+      this.devToolsFeature.requestMount();
     }
 
     this.started = true;
@@ -470,13 +518,7 @@ export class AppShell {
     this.virtualOrbitAroundAnchors.clear();
     this.devSpawnOrbitAroundRefresh?.();
 
-    const manifest = await this.assetLoader.loadManifest('/art/asset-manifest.json');
-    if (manifest) {
-      await this.assetLoader.preloadAll();
-      registerManifestProfiles(manifest, this.visualProfileRegistry);
-    }
-
-    const loadResult = await this.systemSeedLoader.loadSystem(SYSTEM_SEED_URL);
+    const { loadResult } = await this.seedLoadingFeature.load(SYSTEM_SEED_URL);
     this.lastSystemLoadResult = loadResult;
     this.currentSystemId = loadResult.systemId;
 
@@ -506,13 +548,7 @@ export class AppShell {
     // Zainicjuj stacje i wraki jako dockable
     this.markDockableEntities();
 
-    // Zamontuj HUD i menu po zaladowaniu systemu
-    this.hudController.mount(this.hudLayer);
-    this.menuView.mount(this.screenLayer, {
-      onSelect: () => { /* obsluzone wewnatrz MenuController */ },
-      onBack: () => { /* obsluzone wewnatrz MenuController */ },
-      onClose: () => { this.menuController.close(); },
-    });
+    this.uiFeature.start();
 
     this.canvas.focus();
     this.gameLoop.start();
@@ -528,17 +564,15 @@ export class AppShell {
       module.dispose();
     });
     this.gameLoop.stop();
-    this.gameInput.destroy();
-    this.uiInput.destroy();
+    this.inputFeature.dispose();
     this.inputControllersActive = false;
     this.unbindRuntimeListeners();
 
-    this.hudController.unmount();
-    this.menuView.unmount();
+    this.uiFeature.stop();
 
     if (import.meta.env.DEV) {
-      this.devOverlayMountRequested = false;
-      this.unmountDevOverlayIfMounted();
+      this.devToolsFeature.requestUnmount();
+      this.devToolsFeature.unbindHotkeys();
     }
   }
 
@@ -555,10 +589,6 @@ export class AppShell {
       return;
     }
 
-    if (import.meta.env.DEV) {
-      window.addEventListener('keydown', this.handleDevOverlayToggleKeydown);
-    }
-
     window.addEventListener('resize', this.handleResize);
     this.canvas.addEventListener('wheel', this.handleCameraZoomWheel, { passive: false });
     this.runtimeListenersBound = true;
@@ -567,10 +597,6 @@ export class AppShell {
   private unbindRuntimeListeners(): void {
     if (!this.runtimeListenersBound) {
       return;
-    }
-
-    if (import.meta.env.DEV) {
-      window.removeEventListener('keydown', this.handleDevOverlayToggleKeydown);
     }
 
     window.removeEventListener('resize', this.handleResize);
@@ -720,17 +746,7 @@ export class AppShell {
     // Aktualizuj HUD kazdy frame (etap 6)
     this.updateHud(dt);
 
-    if (!this.devOverlay) {
-      return;
-    }
-
-    this.devOverlayUpdateElapsed += dt;
-    if (this.devOverlayUpdateElapsed < DEV_OVERLAY_UPDATE_INTERVAL) {
-      return;
-    }
-
-    this.devOverlayUpdateElapsed = 0;
-    this.devOverlay.update();
+    this.devToolsFeature.tick(dt);
   };
 
   /** Buduje HudContext z biezacego stanu gry i przekazuje do HudController. */

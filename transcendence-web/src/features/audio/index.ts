@@ -1,0 +1,1 @@
+export { createAudioFeatureModule } from './module';
