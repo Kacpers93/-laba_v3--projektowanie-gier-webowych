@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!docker-compose.yml
+!transcendence-web/
+!transcendence-web/**
+
+transcendence-web/node_modules
+transcendence-web/dist
+transcendence-web/.git
+transcendence-web/.github
+transcendence-web/.vscode
+transcendence-web/*.log

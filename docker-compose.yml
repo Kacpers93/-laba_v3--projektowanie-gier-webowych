@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  transcendence-web:
+    build: .
+    ports:
+      - "${PORT:-8080}:80"
+    restart: unless-stopped
+    container_name: transcendence-web-app
