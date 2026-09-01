@@ -18,21 +18,28 @@ import { SceneRenderer } from '@presentation/scene/SceneRenderer';
 import { WorldLayer } from '@features/world-scene';
 import type { FeatureModule } from './composition/FeatureModule';
 import { registerFeatureModules } from './composition/registerFeatureModules';
-import { createAudioFeatureModule } from '@features/audio/module';
+import { createAudioFeatureModule } from '@engine/audio/AudioRuntimeModule';
 import { createDevToolsFeatureModule } from '@features/dev-tools/module';
 import { createInputFeatureModule } from '@features/input/module';
 import { createSeedLoadingFeatureModule } from '@features/seed-loading/module';
-import { createUiFeatureModule } from '@features/ui/module';
+import { createUiFeatureModule } from '@ui/runtime/UiRuntimeModule';
 import { PlayerShipEntity, WorldEntity } from '@world/entities';
 import { FLIGHT_KEY_MAP } from '@systems/flight/FlightActions';
 import { DEFAULT_FLIGHT_CONFIG } from '@systems/flight/flightConfig';
 import {
-  BASE_HEIGHT_BY_SEED_TYPE,
   computeOrbitPosition,
   SEED_TYPE_TO_CATEGORY,
   SystemSeedLoader,
 } from '@world/seed';
 import type { SeedObjectType, SystemLoadResult } from '@world/seed';
+import {
+  registerAppShellDevOverlay,
+  registerDevSpawnSection,
+  type DevOverlayLike,
+  type DevOverlaySectionLike,
+  type DevOverlaySelectOption,
+  type DevSpawnFormConfig,
+} from '@dev/app-shell';
 import type { Vector2 } from '@/types/common';
 import type { Renderable } from '@/types/engine';
 import { HudController } from '@ui/hud/HudController';
@@ -56,59 +63,10 @@ const DEV_SPRITE_TEST_ENTITY_ID = 'dev-sprite-test';
 const DEV_SPRITE_TEST_START_X = 140;
 const DEV_SPRITE_TEST_START_Y = -90;
 const SYSTEM_SEED_URL = '/world/systems/sol-001.json';
-const DEV_SPAWN_DEFAULT_ORBIT_RADIUS = 300;
-const DEV_SPAWN_DEFAULT_ORBIT_PHASE = 0;
 const CAMERA_ZOOM_MIN = 0.5;
 const CAMERA_ZOOM_MAX = 2;
 const CAMERA_ZOOM_STEP = 0.015;
 const CAMERA_ZOOM_LERP_RATE = 8;
-
-type DevOverlaySelectOption = {
-  value: string;
-  label: string;
-};
-
-type DevOverlayLike = {
-  mount(parent: HTMLElement): void;
-  unmount(): void;
-  toggle(): void;
-  registerSection(id: string, label: string): {
-    registerMetric(id: string, label: string, getter: () => string | number): void;
-    registerControl(
-      id: string,
-      label: string,
-      type: 'button',
-      initialValue: undefined,
-      onChange: () => void,
-    ): void;
-    registerControl(
-      id: string,
-      label: string,
-      type: 'checkbox',
-      initialValue: boolean,
-      onChange: (value: boolean) => void,
-    ): void;
-    registerControl(
-      id: string,
-      label: string,
-      type: 'number',
-      initialValue: number,
-      onChange: (value: number) => void,
-      options?: { min?: number; max?: number; step?: number },
-    ): void;
-    registerControl(
-      id: string,
-      label: string,
-      type: 'select',
-      initialValue: string,
-      onChange: (value: string) => void,
-      options: { options: DevOverlaySelectOption[] },
-    ): void;
-  };
-  update(): void;
-};
-
-type DevOverlaySectionLike = ReturnType<DevOverlayLike['registerSection']>;
 
 class DevTestEntity extends BaseEntity {
   public readonly boundingBox: AABB = {
@@ -310,169 +268,49 @@ export class AppShell {
         this.devOverlay = overlay;
         this.devToolsFeature.attachOverlay(overlay);
 
-        const entitiesSection = overlay.registerSection('entities', 'Entities');
-        entitiesSection.registerMetric('total', 'total', () => this.entityManager.size);
-
-        const categories = [
-          'ship',
-          'station',
-          'gate',
-          'wreck',
-          'projectile',
-          'celestial',
-          'environment',
-        ] as const;
-        categories.forEach((category) => {
-          entitiesSection.registerMetric(category, category, () => this.entityManager.getByCategory(category).length);
-        });
-
-        const renderSection = overlay.registerSection('render', 'Render');
-        renderSection.registerMetric('renderables', 'renderables', () => this.worldLayer.renderableCount);
-        renderSection.registerMetric('visible', 'visible', () => this.worldLayer.lastVisibleCount);
-        renderSection.registerMetric('culled', 'culled', () => this.worldLayer.lastCulledCount);
-
-        const cameraSection = overlay.registerSection('camera', 'Camera');
-        cameraSection.registerMetric('x', 'x', () => this.camera.position.x.toFixed(1));
-        cameraSection.registerMetric('y', 'y', () => this.camera.position.y.toFixed(1));
-        cameraSection.registerMetric('zoom', 'zoom', () => this.camera.zoom.toFixed(2));
-
-        const cacheSection = overlay.registerSection('cache', 'Cache');
-        cacheSection.registerMetric('used', 'used', () => {
-          const bytes = this.cache.entityCacheBytes;
-          const mb = bytes / (1024 * 1024);
-
-          if (mb < 0.1) {
-            return `${(bytes / 1024).toFixed(1)} KB`;
-          }
-
-          return `${mb.toFixed(1)} MB`;
-        });
-        cacheSection.registerMetric('limit', 'limit', () => `${(this.cache.entityCacheLimit / (1024 * 1024)).toFixed(0)} MB`);
-        cacheSection.registerMetric('percent', 'percent', () => `${this.cache.entityCachePercent.toFixed(1)}%`);
-        cacheSection.registerMetric('entries', 'entries', () => this.cache.size);
-
-        const assetsSection = overlay.registerSection('assets', 'Assets');
-        assetsSection.registerMetric('loaded', 'loaded', () => this.assetLoader.stats.loaded);
-        assetsSection.registerMetric('total', 'total', () => this.assetLoader.stats.total);
-        assetsSection.registerMetric('failed', 'failed', () => this.assetLoader.stats.failed);
-
-        const systemSection = overlay.registerSection('system', 'System');
-        systemSection.registerMetric('system', 'system', () => this.currentSystemId);
-        systemSection.registerMetric('entities', 'entities', () => this.entityManager.size);
-        systemSection.registerMetric('asteroids', 'asteroids', () => this.getAsteroidCount());
-        systemSection.registerMetric('load-time', 'load time', () => {
-          if (!this.lastSystemLoadResult) {
-            return '-';
-          }
-
-          return `${this.lastSystemLoadResult.loadTimeMs} ms`;
-        });
-        systemSection.registerMetric('fps', 'fps', () =>
-          this.smoothedFps > 0 ? this.smoothedFps.toFixed(1) : '-'
-        );
-        systemSection.registerMetric('frame-ms', 'frame ms', () =>
-          this.frameTimeMs > 0 ? `${this.frameTimeMs.toFixed(2)} ms` : '-'
-        );
-        systemSection.registerMetric(
-          'warnings',
-          'warnings',
-          () => this.lastSystemLoadResult?.warnings.length ?? 0,
-        );
-        systemSection.registerMetric('errors', 'errors', () => this.lastSystemLoadResult?.errors.length ?? 0);
-
-        const spriteTestSection = overlay.registerSection('sprite-test', 'Sprite Test');
-        spriteTestSection.registerMetric('active', 'active', () => this.activeSpriteTestProfileId ?? '-');
-        spriteTestSection.registerMetric('available', 'available', () => this.getSpriteProfileIds().length);
-        spriteTestSection.registerControl('spawn-next', 'Spawn next sprite', 'button', undefined, () => {
-          this.spawnNextSpriteTestEntity();
-        });
-        spriteTestSection.registerControl('clear-sprite-test', 'Clear sprite test', 'button', undefined, () => {
-          this.clearSpriteTestEntity();
-        });
-
-        const flightSection = overlay.registerSection('flight', 'Flight');
-        flightSection.registerMetric('status', 'status', () =>
-          this.playerShipEntity ? 'ready' : 'no player-ship'
-        );
-        flightSection.registerMetric('speed', 'speed', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          return `${this.playerShipEntity.speed.toFixed(1)} px/s`;
-        });
-        flightSection.registerMetric('heading', 'heading', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          const headingDeg = (this.playerShipEntity.heading * 180) / Math.PI;
-          return `${headingDeg.toFixed(1)}°`;
-        });
-        flightSection.registerMetric('velocity', 'velocity', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          const velocity = this.playerShipEntity.currentVelocity;
-          return `(${velocity.x.toFixed(1)}, ${velocity.y.toFixed(1)})`;
-        });
-        flightSection.registerMetric('acceleration', 'acceleration', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          const acceleration = this.playerShipEntity.acceleration;
-          return `(${acceleration.x.toFixed(1)}, ${acceleration.y.toFixed(1)})`;
-        });
-        flightSection.registerMetric('flight-assist', 'flight assist', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          const isAutoStopHeld = this.gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist']);
-          return isAutoStopHeld ? 'AUTO-STOP (HOLD)' : 'OFF';
-        });
-        flightSection.registerMetric('position', 'position', () => {
-          if (!this.playerShipEntity) {
-            return '-';
-          }
-
-          return `(${this.playerShipEntity.position.x.toFixed(1)}, ${this.playerShipEntity.position.y.toFixed(1)})`;
-        });
-
-        const devFlagsSection = overlay.registerSection('dev-flags', 'Dev Flags');
-        this.devFlagsSection = devFlagsSection;
-        devFlagsSection.registerControl(
-          'test-entity',
-          'Test entity',
-          'checkbox',
-          this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, false),
-          (enabled: boolean) => {
-            this.setDevTestEntityEnabled(enabled);
+        registerAppShellDevOverlay({
+          overlay,
+          entityManager: this.entityManager,
+          worldLayer: this.worldLayer,
+          camera: this.camera,
+          cache: this.cache,
+          assetLoader: this.assetLoader,
+          getCurrentSystemId: () => this.currentSystemId,
+          getLastSystemLoadResult: () => this.lastSystemLoadResult,
+          getAsteroidCount: () => this.getAsteroidCount(),
+          getSmoothedFps: () => this.smoothedFps,
+          getFrameTimeMs: () => this.frameTimeMs,
+          getActiveSpriteTestProfileId: () => this.activeSpriteTestProfileId,
+          getSpriteProfileIds: () => this.getSpriteProfileIds(),
+          spawnNextSpriteTestEntity: () => this.spawnNextSpriteTestEntity(),
+          clearSpriteTestEntity: () => this.clearSpriteTestEntity(),
+          getPlayerShipEntity: () => this.playerShipEntity,
+          isFlightAssistHeld: () => this.gameInput.isKeyDown(FLIGHT_KEY_MAP['toggle-flight-assist']),
+          readDevTestEntityEnabled: () => this.readLocalStorageBoolean(DEV_TEST_ENTITY_STORAGE_KEY, false),
+          setDevTestEntityEnabled: (enabled: boolean) => this.setDevTestEntityEnabled(enabled),
+          getDevFlightMode: () => this.devFlightMode,
+          setDevFlightMode: (enabled: boolean) => {
+            this.devFlightMode = enabled;
           },
-        );
-        devFlagsSection.registerControl(
-          'flight-mode',
-          'Flight mode',
-          'checkbox',
-          this.devFlightMode,
-          (enabled: boolean) => {
-            this.devFlightMode = enabled && this.playerShipEntity !== null;
-          },
-        );
-        devFlagsSection.registerControl(
-          'pixel-snap-static',
-          'Pixel snap static',
-          'checkbox',
-          this.pixelSnapStatic,
-          (enabled: boolean) => {
+          getPixelSnapStatic: () => this.pixelSnapStatic,
+          setPixelSnapStatic: (enabled: boolean) => {
             this.pixelSnapStatic = enabled;
-            EntityRenderable.pixelSnapStatic = enabled;
           },
-        );
-
-        this.registerDevSpawnSection(overlay);
+          registerDevSpawnSection: (overlayPanel) => {
+            registerDevSpawnSection({
+              overlay: overlayPanel,
+              getProfileOptionsForSeedType: (type) => this.getProfileOptionsForSeedType(type),
+              getOrbitAroundOptions: () => this.getOrbitAroundOptions(),
+              spawnDevEntityFromForm: (config) => this.spawnDevEntityFromForm(config),
+              onOrbitAroundRefreshReady: (refresh) => {
+                this.devSpawnOrbitAroundRefresh = refresh;
+              },
+            });
+          },
+          onDevFlagsSectionReady: (section) => {
+            this.devFlagsSection = section;
+          },
+        });
       });
     }
 
@@ -697,7 +535,7 @@ export class AppShell {
           : this.smoothedFps * 0.9 + instantFps * 0.1;
     }
 
-            this.updateCameraZoom(dt);
+    this.updateCameraZoom(dt);
 
     if (
       this.inputModeManager.mode === 'game' &&
@@ -765,13 +603,13 @@ export class AppShell {
         const we = e instanceof WorldEntity ? e : null;
         const type = we
           ? ((
-              we.seedType === 'station' || we.seedType === 'station-wreck' ? 'station'
-            : we.seedType === 'ship-wreck' ? 'wreck'
-            : we.seedType === 'npc-ship' ? 'ship'
-            : we.seedType === 'container' ? 'container'
-            : we.seedType === 'star' ? 'star'
-            : we.seedType === 'planet' || we.seedType === 'moon' ? 'planet'
-            : 'other'
+            we.seedType === 'station' || we.seedType === 'station-wreck' ? 'station'
+              : we.seedType === 'ship-wreck' ? 'wreck'
+                : we.seedType === 'npc-ship' ? 'ship'
+                  : we.seedType === 'container' ? 'container'
+                    : we.seedType === 'star' ? 'star'
+                      : we.seedType === 'planet' || we.seedType === 'moon' ? 'planet'
+                        : 'other'
           ) as RadarContact['type'])
           : 'other';
 
@@ -950,14 +788,14 @@ export class AppShell {
 
       const objectType: MenuObjectType = (
         candidate.seedType === 'station' || candidate.seedType === 'station-wreck' ? 'station'
-        : candidate.seedType === 'ship-wreck' ? 'wreck'
-        : candidate.seedType === 'container' ? 'container'
-        : 'station'
+          : candidate.seedType === 'ship-wreck' ? 'wreck'
+            : candidate.seedType === 'container' ? 'container'
+              : 'station'
       );
 
       const objectState: ObjectState = (
         candidate.seedType === 'station-wreck' || candidate.seedType === 'ship-wreck' ? 'destroyed'
-        : 'active'
+          : 'active'
       );
 
       const docked = this.menuController.tryDock(
@@ -1115,168 +953,7 @@ export class AppShell {
     this.activeSpriteTestProfileId = null;
   }
 
-  private registerDevSpawnSection(overlay: DevOverlayLike): void {
-    const section = overlay.registerSection('dev-spawn', 'Dev Spawn');
-    const seedTypes: SeedObjectType[] = [
-      'star',
-      'planet',
-      'moon',
-      'gate',
-      'station-wreck',
-      'station',
-      'container',
-      'ship-wreck',
-      'npc-ship',
-      'player-ship',
-    ];
-
-    let selectedType: SeedObjectType = 'npc-ship';
-    let selectedProfileId = '';
-    let orbitRadius = DEV_SPAWN_DEFAULT_ORBIT_RADIUS;
-    let orbitPhase = DEV_SPAWN_DEFAULT_ORBIT_PHASE;
-    let orbitAround: string | null = null;
-    let height = BASE_HEIGHT_BY_SEED_TYPE[selectedType];
-
-    const refreshHeightControl = (): void => {
-      section.registerControl(
-        'height',
-        'height',
-        'number',
-        height,
-        (value: number) => {
-          const normalized = Math.max(1, Math.round(value));
-          if (selectedType === 'player-ship' && normalized < 11) {
-            height = 11;
-            refreshHeightControl();
-            return;
-          }
-
-          height = normalized;
-        },
-        { min: 1, step: 1 },
-      );
-    };
-
-    const refreshProfileControl = (): void => {
-      const options = this.getProfileOptionsForSeedType(selectedType);
-      if (options.length > 0 && !options.some((option) => option.value === selectedProfileId)) {
-        selectedProfileId = options[0].value;
-      }
-
-      if (options.length === 0) {
-        selectedProfileId = '';
-      }
-
-      section.registerControl(
-        'profile-id',
-        'profileId',
-        'select',
-        selectedProfileId,
-        (value: string) => {
-          selectedProfileId = value;
-        },
-        {
-          options:
-            options.length > 0
-              ? options
-              : [
-                  {
-                    value: '',
-                    label: '(no matching profiles)',
-                  },
-                ],
-        },
-      );
-    };
-
-    const refreshOrbitAroundControl = (): void => {
-      const options = [
-        { value: '', label: 'centrum' },
-        ...this.getOrbitAroundOptions(),
-      ];
-
-      if (!options.some((option) => option.value === (orbitAround ?? ''))) {
-        orbitAround = null;
-      }
-
-      section.registerControl(
-        'orbit-around',
-        'orbitAround',
-        'select',
-        orbitAround ?? '',
-        (value: string) => {
-          orbitAround = value === '' ? null : value;
-        },
-        { options },
-      );
-    };
-
-    this.devSpawnOrbitAroundRefresh = refreshOrbitAroundControl;
-
-    section.registerControl(
-      'type',
-      'type',
-      'select',
-      selectedType,
-      (value: string) => {
-        if (!this.isSeedObjectType(value)) {
-          return;
-        }
-
-        selectedType = value;
-        height = BASE_HEIGHT_BY_SEED_TYPE[selectedType];
-
-        refreshHeightControl();
-        refreshProfileControl();
-      },
-      {
-        options: seedTypes.map((type) => ({ value: type, label: type })),
-      },
-    );
-
-    section.registerControl(
-      'orbit-radius',
-      'orbitRadius',
-      'number',
-      orbitRadius,
-      (value: number) => {
-        orbitRadius = Math.max(0, Math.round(value));
-      },
-      { min: 0, step: 1 },
-    );
-
-    section.registerControl(
-      'orbit-phase',
-      'orbitPhase',
-      'number',
-      orbitPhase,
-      (value: number) => {
-        orbitPhase = value;
-      },
-      { step: 1 },
-    );
-
-    refreshHeightControl();
-    refreshProfileControl();
-    refreshOrbitAroundControl();
-
-    section.registerControl('spawn', 'Spawn', 'button', undefined, () => {
-      const spawned = this.spawnDevEntityFromForm({
-        type: selectedType,
-        profileId: selectedProfileId,
-        orbitRadius,
-        orbitPhase,
-        orbitAround,
-        height,
-      });
-
-      if (spawned) {
-        refreshOrbitAroundControl();
-      }
-    });
-  }
-
-  private spawnDevEntityFromForm(config: {
+  private spawnDevEntityFromForm(config: DevSpawnFormConfig & {
     type: SeedObjectType;
     profileId: string;
     orbitRadius: number;
@@ -1380,21 +1057,6 @@ export class AppShell {
     return this.entityManager
       .getAll()
       .filter((entity) => entity instanceof WorldEntity && entity.seedType === 'asteroid').length;
-  }
-
-  private isSeedObjectType(value: string): value is SeedObjectType {
-    return (
-      value === 'star' ||
-      value === 'planet' ||
-      value === 'moon' ||
-      value === 'gate' ||
-      value === 'station-wreck' ||
-      value === 'station' ||
-      value === 'container' ||
-      value === 'ship-wreck' ||
-      value === 'npc-ship' ||
-      value === 'player-ship'
-    );
   }
 
   private initializePlayerShipEntity(): void {

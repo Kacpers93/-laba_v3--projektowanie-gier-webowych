@@ -5,6 +5,7 @@ Obsluga audio aplikacji na poziomie silnika.
 
 ## Co zawiera
 - `AudioManager.ts`: klasa `AudioManager` do inicjalizacji `AudioContext`, odtwarzania muzyki/SFX/UI, mute i glosnosci kanalow.
+- `AudioRuntimeModule.ts`: runtime feature uruchamiajacy inicjalizacje audio po pierwszym `pointerdown`.
 
 ## Zaleznosci zewnetrzne i wewnetrzne
 - Zewnetrzne: `AudioContext`, `GainNode`, `HTMLAudioElement`.
